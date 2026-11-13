@@ -1,0 +1,14 @@
+[package]
+name = "psx"
+version = "0.1.0"
+edition = "2024"
+description = "PlayStation emulation core for Sol OS"
+license = "MIT"
+publish = false
+
+[dependencies]
+savestate = { path = "../state" }
+
+# The examples read CHD images; the core itself reads nothing.
+[dev-dependencies]
+disc = { path = "../disc" }

@@ -11,11 +11,12 @@ sound, the cartridge save and save states.
 
 | Core | Crate | State | Docs |
 |---|---|---|---|
+| Game Boy, Game Boy Color | `emu/gb` | One core for both, the model picked from the cartridge header; MBC1, MBC2, MBC3 with its clock, MBC5; passes Blargg, Mooneye DMG acceptance, `dmg-acid2` and `cgb-acid2`; no Nintendo boot ROM needed | [docs/gb.md](docs/gb.md) |
 | NES | `emu/nes` | Cycle-exact CPU, PPU and APU; NROM, MMC1, UxROM, CNROM, MMC3, AxROM; passes `nestest` and over 70 Blargg ROMs | [docs/nes.md](docs/nes.md) |
 | Nintendo 64 | `emu/n64` | Interpreter and ARM recompiler for the CPU and RSP, software RDP on its own threads, graphics and audio HLE; Super Mario 64, Mario Kart 64, GoldenEye 007, Paper Mario, Ocarina of Time and Donkey Kong 64 play with sound and keep their saves | [docs/n64.md](docs/n64.md) |
 
-The target is full speed on the Raspberry Pi Zero 2 W. The NES runs there at 107–113 fps, the N64
-at 60 fps or more in six of the eight measured scenes.
+The target is full speed on the Raspberry Pi Zero 2 W. The Game Boy runs there at 170–300 fps, the
+NES at 107–113 fps, the N64 at 60 fps or more in six of the eight measured scenes.
 
 ## Building
 
@@ -33,6 +34,7 @@ suites its tests use; without them those tests skip. N64 games are read from `N6
 To run a game headless and save its picture:
 
 ```sh
+cargo run --release -p gb --example run-gb -- game.gbc 600 out.pnm
 cargo run --release -p nes --example run -- game.nes 600 out.ppm
 cargo run --release -p n64 --example run-n64 -- game.z64 600 out.ppm
 ```

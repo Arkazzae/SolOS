@@ -4,6 +4,7 @@
 members = [
     "cores/gb",
     "cores/gba",
+    "cores/md",
     "cores/n64",
     "cores/nes",
     "cores/pico8",

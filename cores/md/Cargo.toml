@@ -1,0 +1,16 @@
+[package]
+name = "md"
+version = "0.1.0"
+edition = "2024"
+description = "Sega Mega Drive / Genesis emulation core for Sol OS"
+license = "MIT"
+publish = false
+
+[dependencies]
+savestate = { path = "../../shared/savestate" }
+z80 = { path = "../../shared/z80" }
+
+# Only the single-step CPU suites read these (tests, never shipped).
+[dev-dependencies]
+flate2 = "1"
+serde_json = "1"

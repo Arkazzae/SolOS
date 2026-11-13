@@ -39,3 +39,7 @@ cargo run --release -p n64 --example run-n64 -- game.z64 600 out.ppm
 ```
 
 How the core works, what is tested and how fast it runs: [docs/n64.md](docs/n64.md).
+
+## License
+
+MIT or Apache-2.0, at your option: [LICENSE-MIT](LICENSE-MIT), [LICENSE-APACHE](LICENSE-APACHE).

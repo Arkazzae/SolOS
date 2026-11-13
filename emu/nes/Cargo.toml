@@ -1,0 +1,10 @@
+[package]
+name = "nes"
+version = "0.1.0"
+edition = "2024"
+description = "Nintendo Entertainment System emulation core for Sol OS"
+license = "MIT"
+publish = false
+
+[dependencies]
+savestate = { path = "../state" }

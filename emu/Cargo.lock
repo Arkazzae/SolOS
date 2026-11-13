@@ -10,5 +10,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "nes"
+version = "0.1.0"
+dependencies = [
+ "savestate",
+]
+
+[[package]]
 name = "savestate"
 version = "0.1.0"

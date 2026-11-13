@@ -42,4 +42,4 @@ How the core works, what is tested and how fast it runs: [docs/n64.md](docs/n64.
 
 ## License
 
-MIT or Apache-2.0, at your option: [LICENSE-MIT](LICENSE-MIT), [LICENSE-APACHE](LICENSE-APACHE).
+MIT, see [LICENSE](LICENSE).

@@ -3,7 +3,7 @@ name = "n64"
 version = "0.1.0"
 edition = "2024"
 description = "Nintendo 64 emulation core for Sol OS"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 publish = false
 
 [dependencies]

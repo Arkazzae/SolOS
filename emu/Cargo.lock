@@ -24,5 +24,9 @@ dependencies = [
 ]
 
 [[package]]
+name = "pico8"
+version = "0.1.0"
+
+[[package]]
 name = "savestate"
 version = "0.1.0"

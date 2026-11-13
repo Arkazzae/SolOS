@@ -1,0 +1,7 @@
+[package]
+name = "pico8"
+version = "0.1.0"
+edition = "2024"
+description = "PICO-8 compatibility core for Sol OS, written in Rust"
+license = "MIT"
+publish = false

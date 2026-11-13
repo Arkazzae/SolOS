@@ -1,1 +1,4 @@
 /target/
+# SingleStepTests data (about 2 GB), read when present; see docs/md.md.
+/cores/md/tests/singlestep/
+/shared/z80/tests/singlestep/

@@ -10,6 +10,7 @@ members = [
     "cores/psx",
     "shared/disc",
     "shared/savestate",
+    "shared/z80",
 ]
 resolver = "3"
 

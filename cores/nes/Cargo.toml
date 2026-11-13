@@ -7,4 +7,4 @@ license = "MIT"
 publish = false
 
 [dependencies]
-savestate = { path = "../state" }
+savestate = { path = "../../shared/savestate" }

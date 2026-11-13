@@ -1,0 +1,19 @@
+# Sol OS's own emulators: each system a library crate with no I/O (frames in,
+# picture, sound and save states out) in cores/, and what they share in shared/.
+[workspace]
+members = [
+    "cores/gb",
+    "cores/n64",
+    "cores/nes",
+    "cores/pico8",
+    "cores/psx",
+    "shared/disc",
+    "shared/savestate",
+]
+resolver = "3"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

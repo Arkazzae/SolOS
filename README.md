@@ -11,11 +11,14 @@ sound, the cartridge save and save states.
 
 | Core | Crate | State | Docs |
 |---|---|---|---|
-| Game Boy, Game Boy Color | `emu/gb` | One core for both, the model picked from the cartridge header; MBC1, MBC2, MBC3 with its clock, MBC5; passes Blargg, Mooneye DMG acceptance, `dmg-acid2` and `cgb-acid2`; no Nintendo boot ROM needed | [docs/gb.md](docs/gb.md) |
-| NES | `emu/nes` | Cycle-exact CPU, PPU and APU; NROM, MMC1, UxROM, CNROM, MMC3, AxROM; passes `nestest` and over 70 Blargg ROMs | [docs/nes.md](docs/nes.md) |
-| Nintendo 64 | `emu/n64` | Interpreter and ARM recompiler for the CPU and RSP, software RDP on its own threads, graphics and audio HLE; Super Mario 64, Mario Kart 64, GoldenEye 007, Paper Mario, Ocarina of Time and Donkey Kong 64 play with sound and keep their saves | [docs/n64.md](docs/n64.md) |
-| PlayStation | `emu/psx` | R3000A with an ARM recompiler (32-bit and 64-bit), GTE, software GPU on its own thread, SPU with XA and CD-DA, MDEC, pads, DualShock, Multitap and memory cards; its own BIOS, so no Sony BIOS file is needed; discs from CHD through `emu/disc` | [docs/psx.md](docs/psx.md) |
-| PICO-8 | `emu/pico8` | A compatible console with its own P8 Lua (compiler, register VM, coroutines, metatables, collector), drawing, the four-channel synthesiser and the pause menu; 200 of 200 test carts run and replay from a save state | [docs/pico8.md](docs/pico8.md) |
+| Game Boy, Game Boy Color | `cores/gb` | One core for both, the model picked from the cartridge header; MBC1, MBC2, MBC3 with its clock, MBC5; passes Blargg, Mooneye DMG acceptance, `dmg-acid2` and `cgb-acid2`; no Nintendo boot ROM needed | [docs/gb.md](docs/gb.md) |
+| NES | `cores/nes` | Cycle-exact CPU, PPU and APU; NROM, MMC1, UxROM, CNROM, MMC3, AxROM; passes `nestest` and over 70 Blargg ROMs | [docs/nes.md](docs/nes.md) |
+| Nintendo 64 | `cores/n64` | Interpreter and ARM recompiler for the CPU and RSP, software RDP on its own threads, graphics and audio HLE; Super Mario 64, Mario Kart 64, GoldenEye 007, Paper Mario, Ocarina of Time and Donkey Kong 64 play with sound and keep their saves | [docs/n64.md](docs/n64.md) |
+| PlayStation | `cores/psx` | R3000A with an ARM recompiler (32-bit and 64-bit), GTE, software GPU on its own thread, SPU with XA and CD-DA, MDEC, pads, DualShock, Multitap and memory cards; its own BIOS, so no Sony BIOS file is needed; discs from CHD through `shared/disc` | [docs/psx.md](docs/psx.md) |
+| PICO-8 | `cores/pico8` | A compatible console with its own P8 Lua (compiler, register VM, coroutines, metatables, collector), drawing, the four-channel synthesiser and the pause menu; 200 of 200 test carts run and replay from a save state | [docs/pico8.md](docs/pico8.md) |
+
+`shared/` holds what the cores have in common: save states (`savestate`) and disc images (`disc`,
+CHD for the PlayStation).
 
 The target is full speed on the Raspberry Pi Zero 2 W. The Game Boy runs there at 170–300 fps, the
 NES at 107–113 fps, the PlayStation at 95–112 fps in Crash Bandicoot 2, the N64 at 60 fps or more
@@ -26,7 +29,6 @@ in six of the eight measured scenes, and PICO-8's Celeste Classic at 322 fps.
 Stable Rust.
 
 ```sh
-cd emu
 cargo build --release
 cargo test --release
 ```
@@ -47,5 +49,5 @@ cargo run --release -p pico8 --example run-pico8 -- game.p8.png 600 out.ppm
 
 ## License
 
-MIT, see [LICENSE](LICENSE). PICO-8's font (`emu/pico8/src/font.bin`) is Lexaloffle's, released
+MIT, see [LICENSE](LICENSE). PICO-8's font (`cores/pico8/src/font.bin`) is Lexaloffle's, released
 under CC0. PICO-8 is a trademark of Lexaloffle Games; this project is not affiliated with them.

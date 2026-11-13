@@ -7,8 +7,8 @@ license = "MIT"
 publish = false
 
 [dependencies]
-savestate = { path = "../state" }
+savestate = { path = "../../shared/savestate" }
 
 # The examples read CHD images; the core itself reads nothing.
 [dev-dependencies]
-disc = { path = "../disc" }
+disc = { path = "../../shared/disc" }

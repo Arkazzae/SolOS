@@ -1,4 +1,4 @@
-# NES emulator (`emu/nes`)
+# NES emulator (`cores/nes`)
 
 A from-scratch NES (NTSC) core in Rust with no dependencies and no I/O. The caller supplies the cartridge image
 and pad state and gets back video, audio and save state. The core is developed on a PC against public test ROMs
@@ -30,8 +30,8 @@ on the Zero 2 W.
 
 ## Testing
 
-The test ROMs are not in the repo. `emu/nes/tests/roms/fetch.sh` downloads the `nes-test-roms` collection; then
-run `cd emu && cargo test --release`.
+The test ROMs are not in the repo. `cores/nes/tests/roms/fetch.sh` downloads the `nes-test-roms` collection; then
+run `cargo test --release`.
 
 Passing, in over 70 ROMs:
 

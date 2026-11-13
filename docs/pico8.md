@@ -1,4 +1,4 @@
-# PICO-8 (`emu/pico8`)
+# PICO-8 (`cores/pico8`)
 
 A PICO-8 compatible console in Rust: its own P8 Lua (parser, compiler, virtual machine and garbage collector),
 the drawing API on PICO-8's memory, and the four-channel synthesiser. No external crates, no native Lua, no
@@ -123,10 +123,10 @@ a second run of Celeste came back from its Quick Resume, POOM wrote its cartdata
 ## Testing
 
 ```sh
-cargo test --release --manifest-path emu/Cargo.toml -p pico8
-cargo run --release --manifest-path emu/Cargo.toml -p pico8 --example run-pico8 -- \
+cargo test --release -p pico8
+cargo run --release -p pico8 --example run-pico8 -- \
   GAME.p8.png 400 /tmp/last.ppm --wav /tmp/game.wav --press o@100 --press right@120:60 --check-state 250
-cargo run --release --manifest-path emu/Cargo.toml -p pico8 --example run-pico8 -- --code GAME.p8.png
+cargo run --release -p pico8 --example run-pico8 -- --code GAME.p8.png
 ```
 
 - Unit tests cover fixed-point numbers, the lexer and parser, tables and the collector, drawing and the font;

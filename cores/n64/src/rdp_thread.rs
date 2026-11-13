@@ -1,5 +1,5 @@
 //! The RDP drawing on a thread of its own, as the PlayStation's GPU does
-//! (emu/psx/src/video.rs). The machine's thread keeps the RDP's command
+//! (cores/psx/src/video.rs). The machine's thread keeps the RDP's command
 //! interface, its whole state (what save states hold) and the texture
 //! loads; it sends each command that sets state, TMEM after loads and each
 //! draw, in order, to a copy of the RDP's state on the drawing thread,

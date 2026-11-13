@@ -1,4 +1,4 @@
-# Game Boy and Game Boy Color emulator (`emu/gb`)
+# Game Boy and Game Boy Color emulator (`cores/gb`)
 
 A from-scratch Game Boy (DMG, the original grey one) and Game Boy Color core in Rust with no I/O. The caller
 supplies the cartridge image and pressed buttons and gets back video (four shades, or RGB555 colours on Color),
@@ -55,13 +55,13 @@ the game host.
   it runs one frame's worth of time and the screen is blank.
 - **Save state:** about 31 KB on DMG and 96 KB on Color, plus cartridge RAM. A state carries the ROM hash, so a
   state from another game, from the other model, or a corrupted one is rejected without touching the machine.
-  After loading, the game continues frame for frame (video and audio). The mechanism (`emu/state`, crate
-  `savestate`) is shared with the NES core.
+  After loading, the game continues frame for frame (video and audio). The mechanism (the `savestate` crate in
+  `shared/savestate`) is shared with the other cores.
 
 ## Testing
 
-The test ROMs are not in the repo. `emu/gb/tests/roms/fetch.sh` downloads the `game-boy-test-roms` collection
-(c-sp, v7.0); then run `cd emu && cargo test --release -p gb`.
+The test ROMs are not in the repo. `cores/gb/tests/roms/fetch.sh` downloads the `game-boy-test-roms` collection
+(c-sp, v7.0); then run `cargo test --release -p gb`.
 
 Passing, in over 200 ROM runs:
 
@@ -78,7 +78,7 @@ Passing, in over 200 ROM runs:
   speed), rejection of foreign and corrupted states, and the clock in the save file (32- and 64-bit time).
 
 Tests with a reference image compare a hash of the shades (or colours) with a hash of the reference PNG. A
-picture that does not match is written to `emu/target/tmp`.
+picture that does not match is written to `target/tmp`.
 
 Not run or not passing (deliberately, for now): the Mealybug tests and `cgb-acid-hell` (mid-line PPU register
 changes), the OAM corruption bug (`oam_bug`), MBC1 multicarts, and the Mooneye `misc` tests that check Color

@@ -1,4 +1,4 @@
-# PlayStation (`emu/psx`)
+# PlayStation (`cores/psx`)
 
 A PlayStation core (SCPH-1001, NTSC) written in Rust, with no I/O of its own, like the NES, Game Boy and
 GBA cores. The host supplies a disc (through the `Disc` interface: raw 2352-byte sectors and tracks) or a
@@ -103,7 +103,7 @@ frame 400, 4000 frames):
   acknowledge). Commands: Getstat, Setloc, ReadN/ReadS (75 or 150 sectors/s), Pause, Init, Stop, MotorOn,
   SeekL/P, Setmode, Setfilter, Getparam, GetlocL/P, GetTN, GetTD, GetID (region from the licence in sector 4),
   Test, ReadTOC, Mute/Demute. The sector buffer feeds the data FIFO and DMA 3.
-- **Disc images.** The `emu/disc` crate reads CHD: tracks from CHT2 metadata, 2448-byte frames aligned to four,
+- **Disc images.** The `shared/disc` crate reads CHD: tracks from CHT2 metadata, 2448-byte frames aligned to four,
   stored or absent pregaps, audio byte-swapped to little-endian. The `chd` crate decompresses (LZMA, zlib,
   FLAC); the core knows nothing about CHD.
 - **SPU.** 24 SPU-ADPCM voices with Gaussian interpolation (the 512-entry table from psx-spx), pitch
@@ -163,7 +163,7 @@ answers kernel calls itself (`src/bios.rs`).
   card; Spyro creates its save on start.
 - **Not done:** program-defined devices (AddDevice) and `cdrom:` files.
 
-OpenBIOS (pcsx-redux/nugget, MIT) is the reference. `emu/psx/bios/build-openbios.sh OUT` builds it from
+OpenBIOS (pcsx-redux/nugget, MIT) is the reference. `cores/psx/bios/build-openbios.sh OUT` builds it from
 source without a shell: clang with a mipsel target and `ld.lld`, no MIPS gcc. The script patches a copy of the
 sources for LLVM: `rfe` as a word, full-form `sltiu`, `li` with `%lo()` as `addiu` (LLVM drops the relocation
 there), address 0xfffe0130 as a negative number, alignment in the linker script, fonts kept;
@@ -175,7 +175,7 @@ there), address 0xfffe0130 as a negative number, alignment in the linker script,
 On ARM a JIT translates R3000A blocks to the host's code: 32-bit ARM (`compile.rs`, `arm.rs`) on the Pis'
 32-bit builds, 64-bit ARM (`compile_a64.rs`, `a64.rs`, since 2026-11-02) on the TrimUI Smart Pro's game host,
 which its GPU driver keeps 64-bit, and on 64-bit builds. Elsewhere the interpreter runs, and it stays the
-reference the JIT is checked against. Code is in `emu/psx/src/jit/`.
+reference the JIT is checked against. Code is in `cores/psx/src/jit/`.
 
 The 64-bit compiler follows the 32-bit one block for block: the same load delay, remembered scratch registers
 (W0–W3), code out of line and chaining. What A64 lacks it does otherwise: CSEL and CSET where A32 executes
@@ -215,7 +215,7 @@ it is `MAP_JIT`, made writable only while a block is copied in.
 
 ## Testing
 
-The test programs are not in the repository. `emu/psx/tests/roms/fetch.sh` downloads `ps1-tests` (JaCzekanski,
+The test programs are not in the repository. `cores/psx/tests/roms/fetch.sh` downloads `ps1-tests` (JaCzekanski,
 release build-158, checked by hash). Their logs and VRAM images come from a real console, so the tests
 (`cargo test --release -p psx`) compare the core with hardware:
 
@@ -319,7 +319,7 @@ spent 60% in one loop (4-bit textured Gouraud triangles) and 15% in semi-transpa
 
 ### Techniques
 
-- **GPU thread** (`emu/psx/src/video.rs`). The CPU side tracks each command only for what the CPU reads back
+- **GPU thread** (`cores/psx/src/video.rs`). The CPU side tracks each command only for what the CPU reads back
   (GPUSTAT, the GPUREAD latch, the texture page from polygons). Words go in batches to a copy of the GPU that
   draws them in the same order; the GPU is passed through channels, not shared. The machine reads VRAM only
   after that copy has drawn everything and answered (GPUREAD during a VRAM→CPU transfer, saving and loading
@@ -335,7 +335,7 @@ spent 60% in one loop (4-bit textured Gouraud triangles) and 15% in semi-transpa
   is one instruction, not a 64-bit call). Pixel loops are specialised per shading kind, with texture depth,
   texture window and 4-bit texels as loop constants; colours saturate with `usat`; the pixel loop is
   branch-free.
-- **VSync wait loop** (`emu/psx/src/jit/wait.rs`). PsyQ counts a timeout on the stack until the counter that
+- **VSync wait loop** (`cores/psx/src/jit/wait.rs`). PsyQ counts a timeout on the stack until the counter that
   moves the vblank interrupt reaches its target. Profiling showed its two blocks at 11% of CPU-thread cycles.
   Nothing the loop reads can change before the next event, so the dispatcher runs its iterations at once, as
   the compiled blocks would: the same cycles, the same block end, registers and counter as they would be. An

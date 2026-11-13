@@ -1,0 +1,5 @@
+# Test ROMs, fetched by fetch.sh; not ours to commit.
+dillon/
+krom/
+rdp-vectors/
+n64-systemtest/

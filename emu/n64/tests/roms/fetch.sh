@@ -1,0 +1,468 @@
+#!/bin/sh
+#
+# Fetches the Nintendo 64 test ROMs the tests run into this directory:
+# Dillon Beliveau's n64-tests (each instruction run on many operands, the
+# number of the first that fails left in r30), from its release, which is
+# rebuilt in place and so is checked by hash; PeterLemon's (krom's) CPU
+# and RSP tests, which draw PASS or FAIL for each case (or values to
+# compare), with the fonts they draw them in, and some of his demos (of
+# the CPU, the FPU and the RDP), file by file from a fixed commit (the
+# whole repository is 2.7 GB); RustyN64's RDP conformance vectors (MIT or
+# Apache-2.0): command lists, each with the frame buffer angrylion's RDP
+# drew from it, file by file from a fixed commit and each checked by hash;
+# and from the same commit Lemmy's n64-systemtest (MIT), thousands of cases
+# of the CPU, the FPU, the RSP and the RCP that judge themselves.
+# They are not part of the repository.
+
+set -e
+cd "$(dirname "$0")"
+check() {
+	if command -v sha256sum >/dev/null; then
+		echo "$1  $2" | sha256sum -c - >/dev/null
+	else
+		echo "$1  $2" | shasum -a 256 -c - >/dev/null
+	fi
+}
+if [ ! -d dillon ]; then
+	curl -sSfL -o dillon.zip https://github.com/Dillonb/n64-tests/releases/download/latest/dillon-n64-tests.zip
+	check 28ee0af7a7939bcafb1a35a392243647d01866f56c85d7138de6da0a51ffe490 dillon.zip
+	mkdir dillon
+	unzip -q dillon.zip -d dillon
+	rm dillon.zip
+fi
+# Each file goes to krom/, without the CPUTest/ its CPU tests are in.
+commit=7085543e4a19d8c539fc9e0a4d2869e788b4ed4b
+while read -r path; do
+	local_path="krom/${path#CPUTest/}"
+	if [ ! -f "$local_path" ]; then
+		mkdir -p "$(dirname "$local_path")"
+		curl -sSfL -o "$local_path" "https://raw.githubusercontent.com/PeterLemon/N64/$commit/$path"
+	fi
+done <<EOF
+CPUTest/CP0/COP0Cause/COP0Cause.N64
+CPUTest/CP0/COP0Register/COP0Register.N64
+CPUTest/CP1/ABS/CP1ABS.N64
+CPUTest/CP1/ADD/CP1ADD.N64
+CPUTest/CP1/C/EQ/CP1CEQ.N64
+CPUTest/CP1/C/F/CP1CF.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.eq.s.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.f.s.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.le.s.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.lt.s.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.nge.s.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.ngl.s.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.ngle.s.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.ngt.s.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.ole.s.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.olt.s.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.seq.s.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.sf.s.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.ueq.s.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.ule.s.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.ult.s.N64
+CPUTest/CP1/C/FPUCompare/FPUCompare-c.un.s.N64
+CPUTest/CP1/C/LE/CP1CLE.N64
+CPUTest/CP1/C/LT/CP1CLT.N64
+CPUTest/CP1/C/NGE/CP1CNGE.N64
+CPUTest/CP1/C/NGL/CP1CNGL.N64
+CPUTest/CP1/C/NGLE/CP1CNGLE.N64
+CPUTest/CP1/C/NGT/CP1CNGT.N64
+CPUTest/CP1/C/OLE/CP1COLE.N64
+CPUTest/CP1/C/OLT/CP1COLT.N64
+CPUTest/CP1/C/SEQ/CP1CSEQ.N64
+CPUTest/CP1/C/SF/CP1CSF.N64
+CPUTest/CP1/C/UEQ/CP1CUEQ.N64
+CPUTest/CP1/C/ULE/CP1CULE.N64
+CPUTest/CP1/C/ULT/CP1CULT.N64
+CPUTest/CP1/C/UN/CP1CUN.N64
+CPUTest/CP1/CEIL/CP1CEIL.N64
+CPUTest/CP1/COP1FullMode/COP1FullMode.N64
+CPUTest/CP1/CVT/CP1CVT.N64
+CPUTest/CP1/DIV/CP1DIV.N64
+CPUTest/CP1/FLOOR/CP1FLOOR.N64
+CPUTest/CP1/MUL/CP1MUL.N64
+CPUTest/CP1/NEG/CP1NEG.N64
+CPUTest/CP1/ROUND/CP1ROUND.N64
+CPUTest/CP1/SQRT/CP1SQRT.N64
+CPUTest/CP1/SUB/CP1SUB.N64
+CPUTest/CP1/TIMINGNTSC/CP1TIMINGNTSC.N64
+CPUTest/CP1/TRUNC/CP1TRUNC.N64
+CPUTest/CPU/ADD/CPUADD.N64
+CPUTest/CPU/ADDU/CPUADDU.N64
+CPUTest/CPU/AND/CPUAND.N64
+CPUTest/CPU/DADD/CPUDADD.N64
+CPUTest/CPU/DADDU/CPUDADDU.N64
+CPUTest/CPU/DDIV/CPUDDIV.N64
+CPUTest/CPU/DDIVU/CPUDDIVU.N64
+CPUTest/CPU/DIV/CPUDIV.N64
+CPUTest/CPU/DIVU/CPUDIVU.N64
+CPUTest/CPU/DMULT/CPUDMULT.N64
+CPUTest/CPU/DMULTU/CPUDMULTU.N64
+CPUTest/CPU/DSUB/CPUDSUB.N64
+CPUTest/CPU/DSUBU/CPUDSUBU.N64
+CPUTest/CPU/LOADSTORE/LB/CPULB.N64
+CPUTest/CPU/LOADSTORE/LD/CPULD.N64
+CPUTest/CPU/LOADSTORE/LH/CPULH.N64
+CPUTest/CPU/LOADSTORE/LL_LLD_SC_SCD/LL_LLD_SC_SCD.N64
+CPUTest/CPU/LOADSTORE/LW/CPULW.N64
+CPUTest/CPU/LOADSTORE/SB/CPUSB.N64
+CPUTest/CPU/LOADSTORE/SD/CPUSD.N64
+CPUTest/CPU/LOADSTORE/SH/CPUSH.N64
+CPUTest/CPU/LOADSTORE/SW/CPUSW.N64
+CPUTest/CPU/MULT/CPUMULT.N64
+CPUTest/CPU/MULTU/CPUMULTU.N64
+CPUTest/CPU/NOR/CPUNOR.N64
+CPUTest/CPU/OR/CPUOR.N64
+CPUTest/CPU/SHIFT/DSLL/CPUDSLL.N64
+CPUTest/CPU/SHIFT/DSLL32/CPUDSLL32.N64
+CPUTest/CPU/SHIFT/DSLLV/CPUDSLLV.N64
+CPUTest/CPU/SHIFT/DSRA/CPUDSRA.N64
+CPUTest/CPU/SHIFT/DSRA32/CPUDSRA32.N64
+CPUTest/CPU/SHIFT/DSRAV/CPUDSRAV.N64
+CPUTest/CPU/SHIFT/DSRL/CPUDSRL.N64
+CPUTest/CPU/SHIFT/DSRL32/CPUDSRL32.N64
+CPUTest/CPU/SHIFT/DSRLV/CPUDSRLV.N64
+CPUTest/CPU/SHIFT/SLL/CPUSLL.N64
+CPUTest/CPU/SHIFT/SLLV/CPUSLLV.N64
+CPUTest/CPU/SHIFT/SRA/CPUSRA.N64
+CPUTest/CPU/SHIFT/SRAV/CPUSRAV.N64
+CPUTest/CPU/SHIFT/SRL/CPUSRL.N64
+CPUTest/CPU/SHIFT/SRLV/CPUSRLV.N64
+CPUTest/CPU/SUB/CPUSUB.N64
+CPUTest/CPU/SUBU/CPUSUBU.N64
+CPUTest/CPU/TIMINGNTSC/CPUTIMINGNTSC.N64
+CPUTest/CPU/XOR/CPUXOR.N64
+CPUTest/DMAAlignment-PI-cart/DMAAlignment-PI-ROM-FROM.N64
+CPUTest/DMAAlignment-PI-cart/DMAAlignment-PI-ROM-FROM_large_2.N64
+CPUTest/DMAAlignment-PI-cart/DMAAlignment-PI-ROM-FROM_large_4.N64
+CPUTest/DMAAlignment-PI-cart/DMAAlignment-PI-ROM-FROM_large_6.N64
+CPUTest/Exceptions/Compare/ExceptionCompareDisabled.n64
+CPUTest/Exceptions/Compare/ExceptionCompareRegisters.n64
+CPUTest/Exceptions/Syscall/ExceptionSyscall.n64
+CPUTest/Exceptions/Syscall/ExceptionSyscallDelay.n64
+CPUTest/Exceptions/Syscall/ExceptionSyscallDelay2.n64
+CPUTest/Exceptions/Syscall/ExceptionSyscallWhileInException.n64
+CPUTest/Exceptions/TLB/ExceptionTLBReadMiss.n64
+CPUTest/Exceptions/TLB/ExceptionTLBReadMissDelay.n64
+CPUTest/Exceptions/TLB/ExceptionTLBReadMissNested.n64
+CPUTest/Exceptions/TLB/ExceptionTLBReadMissNestedDelay.n64
+CPUTest/Exceptions/TLB/ExceptionTLBWriteMiss.n64
+CPUTest/Exceptions/TLB/ExceptionTLBWriteMissDelay.n64
+CPUTest/Exceptions/Trap/ExceptionTEQ.n64
+CPUTest/Exceptions/Trap/ExceptionTEQDelay.n64
+CPUTest/Exceptions/Unaligned/ExceptionUnaligned.n64
+CPUTest/Exceptions/Unaligned/ExceptionUnalignedDelay.n64
+CPUTest/Exceptions/VIIntr/ExceptionVIIntrDisabled.n64
+RSPTest/CP2/LOADSTORE/LTV/RSPCP2LTV.N64
+RSPTest/CP2/LOADSTORE/LWV/RSPCP2LWV.N64
+RSPTest/CP2/LOADSTORE/TransposeMatrix/RSPTransposeMatrix.N64
+RSPTest/CP2/LOADSTORE/TransposeMatrixVMOV/RSPTransposeMatrixVMOV.N64
+RSPTest/CP2/RESERVED/V056/RSPCP2V056.N64
+RSPTest/CP2/RESERVED/V073/RSPCP2V073.N64
+RSPTest/CP2/RESERVED/VACC/RSPCP2VACC.N64
+RSPTest/CP2/RESERVED/VADDB/RSPCP2VADDB.N64
+RSPTest/CP2/RESERVED/VEXTN/RSPCP2VEXTN.N64
+RSPTest/CP2/RESERVED/VEXTQ/RSPCP2VEXTQ.N64
+RSPTest/CP2/RESERVED/VEXTT/RSPCP2VEXTT.N64
+RSPTest/CP2/RESERVED/VMULQ/RSPCP2VMULQ.N64
+RSPTest/CP2/RESERVED/VRNDP/RSPCP2VRNDP.N64
+RSPTest/CP2/RESERVED/VSAC/RSPCP2VSAC.N64
+RSPTest/CP2/RESERVED/VSUBB/RSPCP2VSUBB.N64
+RSPTest/CP2/RESERVED/VSUT/RSPCP2VSUT.N64
+RSPTest/CP2/SORT/RSPSORT.N64
+RSPTest/CP2/VABS/RSPCP2VABS.N64
+RSPTest/CP2/VADD/RSPCP2VADD.N64
+RSPTest/CP2/VAND/RSPCP2VAND.N64
+RSPTest/CP2/VCL/RSPCP2VCL.N64
+RSPTest/CP2/VCR/RSPCP2VCR.N64
+RSPTest/CP2/VEQ/RSPCP2VEQ.N64
+RSPTest/CP2/VLT/RSPCP2VLT.N64
+RSPTest/CP2/VMACF/RSPCP2VMACF.N64
+RSPTest/CP2/VMADL/RSPCP2VMADL.N64
+RSPTest/CP2/VMADN/RSPCP2VMADN.N64
+RSPTest/CP2/VMUDL/RSPCP2VMUDL.N64
+RSPTest/CP2/VMUDN/RSPCP2VMUDN.N64
+RSPTest/CP2/VMULF/RSPCP2VMULF.N64
+RSPTest/CP2/VNOP/RSPCP2VNOP.N64
+RSPTest/CP2/VOR/RSPCP2VOR.N64
+RSPTest/CP2/VRCP/RSPCP2VRCP.N64
+RSPTest/CP2/VRCPH/RSPCP2VRCPH.N64
+RSPTest/CP2/VRCPL/RSPCP2VRCPL.N64
+RSPTest/CP2/VSAR/RSPCP2VSAR.N64
+RSPTest/CP2/VSUB/RSPCP2VSUB.N64
+RSPTest/CP2/VXOR/RSPCP2VXOR.N64
+RSPTest/CPU/ADD/RSPCPUADD.N64
+RSPTest/CPU/ADDU/RSPCPUADDU.N64
+RSPTest/CPU/AND/RSPCPUAND.N64
+RSPTest/CPU/NOR/RSPCPUNOR.N64
+RSPTest/CPU/OR/RSPCPUOR.N64
+RSPTest/CPU/SHIFT/SLL/RSPCPUSLL.N64
+RSPTest/CPU/SHIFT/SLLV/RSPCPUSLLV.N64
+RSPTest/CPU/SHIFT/SRA/RSPCPUSRA.N64
+RSPTest/CPU/SHIFT/SRAV/RSPCPUSRAV.N64
+RSPTest/CPU/SHIFT/SRL/RSPCPUSRL.N64
+RSPTest/CPU/SHIFT/SRLV/RSPCPUSRLV.N64
+RSPTest/CPU/SUB/RSPCPUSUB.N64
+RSPTest/CPU/SUBU/RSPCPUSUBU.N64
+RSPTest/CPU/XOR/RSPCPUXOR.N64
+RSPTest/DMAAlignment-SP/DMAAlignment-SP-FROM.N64
+RSPTest/DMAAlignment-SP/DMAAlignment-SP-TO.N64
+RSPTest/MEM/IMEM/RSPIMEM.N64
+RSPTest/XBUS/RSPXBUSRDP.N64
+CPUTest/CPU/ADD/FontBlack8x8.bin
+CPUTest/CPU/ADD/FontRed8x8.bin
+CPUTest/CPU/ADD/FontGreen8x8.bin
+FrameBuffer/16BPP/FrameBufferCPU320x240/FrameBufferCPU16BPP320X240.N64
+FrameBuffer/32BPP/FrameBufferCPU640x480/FrameBufferCPU32BPP640X480.N64
+HelloWorld/16BPP/HelloWorldCPU320x240/HelloWorldCPU16BPP320X240.N64
+HelloWorld/32BPP/HelloWorldCPU320x240/HelloWorldCPU32BPP320X240.N64
+CP1/Fractal/32BPP/320X240/Mandelbrot/Single/Mandelbrot32BPP320X240.N64
+CP1/Fractal/32BPP/320X240/Mandelbrot/Double/Mandelbrot32BPP320X240.N64
+RDP/16BPP/Rectangle/FillRectangle/FillRectangle320x240/FillRectangle16BPP320X240.N64
+RDP/16BPP/Rectangle/FillRectangle/Cycle1FillRectangle320x240/Cycle1FillRectangle16BPP320X240.N64
+RDP/16BPP/Rectangle/FillZBufferRectangle320x240/Cycle1FillZBufferRectangle16BPP320X240.N64
+RDP/16BPP/Triangle/FillTriangle/FillTriangle320x240/FillTriangle16BPP320X240.N64
+RDP/16BPP/Triangle/FillTriangle/Cycle1FillTriangle320x240/Cycle1FillTriangle16BPP320X240.N64
+RDP/16BPP/Triangle/ShadeTriangle320x240/Cycle1ShadeTriangle16BPP320X240.N64
+RDP/16BPP/Triangle/FillZBufferTriangle320x240/Cycle1FillZBufferTriangle16BPP320X240.N64
+RDP/16BPP/Triangle/Cube/FillTriangle320x240/CubeFillTriangle16BPP320X240.N64
+RDP/16BPP/Triangle/Plot/FillTriangle/LeftMajorTriangle320x240/LeftMajorTriangle16BPP320X240.N64
+RDP/16BPP/Triangle/Plot/FillTriangle/RightMajorTriangle320x240/RightMajorTriangle16BPP320X240.N64
+RDP/16BPP/Rectangle/TextureRectangle/CopyTextureRectangleRGBA16B320x240/CopyTextureRectangle16BPPRGBA16B320X240.N64
+RDP/16BPP/Rectangle/TextureRectangle/Cycle1TextureRectangleRGBA16B320x240/Cycle1TextureRectangle16BPPRGBA16B320X240.N64
+RDP/16BPP/Rectangle/TextureRectangle/Cycle1TextureRectangleRGBA32B320x240/Cycle1TextureRectangle16BPPRGBA32B320X240.N64
+RDP/16BPP/Rectangle/TextureRectangle/Cycle1TextureRectangleIA16B320x240/Cycle1TextureRectangle16BPPIA16B320X240.N64
+RDP/16BPP/Rectangle/TextureRectangle/Cycle1TextureRectangleIA8B320x240/Cycle1TextureRectangle16BPPIA8B320X240.N64
+RDP/16BPP/Rectangle/TextureRectangle/Cycle1TextureRectangleIA4B320x240/Cycle1TextureRectangle16BPPIA4B320X240.N64
+RDP/16BPP/Rectangle/TextureRectangle/Cycle1TextureRectangleI8B320x240/Cycle1TextureRectangle16BPPI8B320X240.N64
+RDP/16BPP/Rectangle/TextureRectangle/Cycle1TextureRectangleI4B320x240/Cycle1TextureRectangle16BPPI4B320X240.N64
+RDP/16BPP/Rectangle/TextureRectangle/TLUT/CopyTextureRectangleTLUTRGBA4B320x240/CopyTextureRectangle16BPPTLUTRGBA4B320X240.N64
+RDP/16BPP/Rectangle/TextureRectangle/TLUT/CopyTextureRectangleTLUTRGBA8B320x240/CopyTextureRectangle16BPPTLUTRGBA8B320X240.N64
+RDP/16BPP/Rectangle/TextureRectangle/TLUT/Cycle1TextureRectangleTLUTIA4B320x240/Cycle1TextureRectangle16BPPTLUTIA4B320X240.N64
+RDP/16BPP/Rectangle/TextureRectangle/TLUT/Cycle1TextureRectangleTLUTIA8B320x240/Cycle1TextureRectangle16BPPTLUTIA8B320X240.N64
+RDP/16BPP/Rectangle/TextureRectangle/TLUT/Cycle1TextureRectangleTLUTRGBA4B320x240/Cycle1TextureRectangle16BPPTLUTRGBA4B320X240.N64
+RDP/16BPP/Rectangle/TextureRectangle/TLUT/Cycle1TextureRectangleTLUTRGBA8B320x240/Cycle1TextureRectangle16BPPTLUTRGBA8B320X240.N64
+RDP/16BPP/Triangle/TextureTriangle/CopyTextureTriangleRGBA16B320x240/CopyTextureTriangle16BPPRGBA16B320X240.N64
+RDP/16BPP/Triangle/TextureTriangle/Cycle1TextureTriangleRGBA16B320x240/Cycle1TextureTriangle16BPPRGBA16B320X240.N64
+RDP/16BPP/Triangle/TextureTriangle/Cycle1TextureTriangleRGBA32B320x240/Cycle1TextureTriangle16BPPRGBA32B320X240.N64
+RDP/32BPP/Triangle/ShadeTriangle320x240/Cycle1ShadeTriangle32BPP320X240.N64
+EOF
+# Each vector goes to rdp-vectors/ (the generated ones to fuzz/), from
+# crates/rustyn64-test-harness/tests/vectors/ of RustyN64; a file with
+# the wrong hash is removed.
+commit=388b1d439327527782e8d57748b3ec431bb95770
+while read -r sum path; do
+	local_path="rdp-vectors/$path"
+	if [ ! -f "$local_path" ]; then
+		mkdir -p "$(dirname "$local_path")"
+		curl -sSfL -o "$local_path" \
+			"https://raw.githubusercontent.com/doublegate/RustyN64/$commit/crates/rustyn64-test-harness/tests/vectors/$path"
+		check "$sum" "$local_path" || { rm -f "$local_path"; echo "$local_path: wrong hash" >&2; exit 1; }
+	fi
+done <<EOF
+27ff378a35dfe623a1b08d354d818ebf06bf5e287724f49355ef0f94de4ac36a aa_tri_coverage_16.rvec
+36d533386ceb39d7fc913b48de96ba79ca2650374308b39000ffd0338013cd31 alpha_compare_16.rvec
+8bb5958435d31a001779866839a0e69339d6ee36c3b286058cb6ce2ff060f97a alpha_compare_z_16.rvec
+4f9b2666dc7e021565991ab9280dac7ba7572ba183e8df869a2ecb40a96d39d7 ci4_tlut_disabled_16.rvec
+599ddeb77b8ec94f7d3659ccdd51e4b686d2a29c221b32b62357aadcc407cc08 cvg_dest_full_16.rvec
+9e5e9e891895f966d8f186284c88300f6c5534e40db38bc0c9decbc750fbc982 dither_tri_32.rvec
+c385d20374822aa7bee26a1be48bdf4ae1e58d1b11615e06808a6010f27a971f fill_rect_16.rvec
+33d000375754a8356f1b7bdf363f87bf0e8279fcecb639663df4e01f2d5c68bb fill_rect_1cycle_16.rvec
+7a8755dabab0fe189353d3ae4a7e1cc3252493fd379a4b784975c7889c82312b fill_rect_2cycle_16.rvec
+88f77d30ba23a463076107c764868e415218711aea605156af3eaede3c65e207 fill_tri_16.rvec
+d7b51307f9a15b3473cb8f28ba49393a04815d78fa8f248735cc06980ef788a9 fill_tri_frac_16.rvec
+dd5fb83f9ed4b69621052f4c2618504d9cbb130cd4d457622dcc4e4607913513 fill_tri_neg_16.rvec
+1769715b4f2777ab72284da1ae3dff607a61bb66dad38344c43e3b4fb5dfb6a3 fill_tri_wide_16.rvec
+258655fdd9d3c02669147e9bd166d9de09fa77b4a62ce79926cb2c6a344ee1b9 load_block_count_16.rvec
+0f4bea553848b89822dd14df156b90beeeb6754f3bd1f11407c669ba1819ed47 prim_combiner_32.rvec
+e43e0f8a93d56f9790f0ab8f37939d8d072f2e233ca995aaadbd8a4313eb4f2c shade_depth_tri_frac_16.rvec
+ed6ef63a163cf3e4befcc3d48256c3f030521a3249a031abb2304cc97b47ccd5 shade_grad_tri_32.rvec
+56dd53ca16ff1907dbff925cde23a4eba2394b066ca74035c7e90f89b9f755c2 shade_tri_32.rvec
+0f706765b67e4013c5132238bf445d89c37da0fdb2e8ab4908bdd9f8b45b3ee8 shade_tri_frac_16.rvec
+953a5fa3348f9d2209c596c8dc5cca07035498ce813ac394d56d7bbbc0629246 tex_rect_8x8_16.rvec
+6219580d6c5ff9ac27c189dda9938289d2cf9c175b0308e8180a64dc8cc8452f tex_rect_copy_16.rvec
+d43230e69b4ba70bacc0bfc211098d91c25c49a8bd530dfa52ef50a42a635fad tex_rect_mag_16.rvec
+554e8ac84f9a5743fcefae4c8a68fa5857886e1396c96b828960ae0da3bb5251 tex_rect_offset_16.rvec
+7fe5f66957810b3b89fae2b31db62c8fdc9e3430c00abd09a7839748214d05bf tex_tri_16.rvec
+87f57b4c9cd8c1f7da79e9e0f3c7c72e542b0f6b0d927b12b782e2d2cd4c2170 tex_tri_2cycle_16.rvec
+e9c216513bdbc86ee6fef154acf81503caeec7dda90d1adab9f975344cd730fd tex_tri_base_tile_16.rvec
+d81aa346bad2b56552f978e73050febcbc76c34d9b25b00d21cb7e93c21cefa5 tex_tri_bilinear_16.rvec
+ef244b260279495edbea062c36274e0d6432b1278e91ad386b9f342b1c26e852 tex_tri_bilinear_wrap_16.rvec
+24f00f619e80c3599d5601980d8615c60e73206dc093fb6751709287937ff772 tex_tri_chromakey_16.rvec
+e369b2627910a84b8ead26b2d0b2ec89414267fe8eb660f734dbe795bd099058 tex_tri_chromakey_alpha_16.rvec
+927ea528e9962c54d37baf2f06945d18a2205efa2ae00733921d6fde6667f20a tex_tri_ci4_tlut_16.rvec
+b2b6ee7db0a9d0483d1372844ca207b30d82775872a85e4b435936a09a5074c3 tex_tri_clamp_16.rvec
+f479d2dfda01b5e98813e00606ce4f4645d6c5bbfdcf29aa1c5ba286e016ed31 tex_tri_convert_k45_16.rvec
+f0db8d1a8884214abd731ade3392b0b7fde5f494fb67eaef86a40409e3d6895b tex_tri_convert_kneg_16.rvec
+cfb70fbc365cae4dfe00a9e0521b619026494fb878865c53d47f9185058e0b51 tex_tri_fixed_16.rvec
+aedded7fd20a73c14b0f3556b1b9b572e63bd1b8fc74b220f8f1aa74c37d6014 tex_tri_i4_16.rvec
+896254da2ceb711dd91bb6f374947905922c624ddb1fed27783d44c9b8cd8a5b tex_tri_lodfrac_16.rvec
+3554b46aab47f65f3ce06e519f17e273451ca254e634248019792eec166fa929 tex_tri_mid_texel_16.rvec
+c5fff74905c13879e719183ad20e5ec7c621426e0cb76572ef5647a8a04babbf tex_tri_mip_tile_16.rvec
+324c55a8b23f34dd7adfe216838ae017c26df6881415702c69d0d31110ae3308 tex_tri_mirror_s_16.rvec
+5a7e613275a7d30649167dba71854f448537338b640888e3062dded2e460f869 tex_tri_neg_dsdx_16.rvec
+7378fdda7ab077113f86405a8afd7a443c2033806f3119829bb3925a07f56bbc tex_tri_primlodfrac_16.rvec
+5e44802047703ea6e2565fc941aba3b928c35ce33eabb73d174e6b31eb3a6f98 tex_tri_right_major_16.rvec
+ec55a85f6c963fac64ac514e5be197cf000175f1e69d40cfc73f51f7fdec98d1 tex_tri_wrap_16.rvec
+6f3de653f3fabe5ee412b3bceff2519a47e6c44552ff7671e39ab8c8bd13b825 fuzz/fz_fill_000.rvec
+811160eb7d719d4597d4b57c18fcda44104412f687f74fccfe4ffddefc3af28e fuzz/fz_fill_001.rvec
+d26cb684858a43b1e627796c9aba72cf7b48cad454ec0a2cdaf0cee3eda0a9b9 fuzz/fz_fill_002.rvec
+e18c279e6e9c683a8f9378421def36ddc69ab3e803be5645e2f93e28e5fcface fuzz/fz_fill_003.rvec
+4de6df93423ddab0c572ee469a44c8403394eadcccaede8678e56a49506ccc3e fuzz/fz_fill_004.rvec
+a3194e08ce49fd4b59feff6e5f30252112de0f15a467abc4d0568468e936cf52 fuzz/fz_fill_005.rvec
+67a7d560a0aef3806a214c2e91fc4fa14e667ddd6dcb1d79e26a5a47c459c9fa fuzz/fz_fill_006.rvec
+5aa25b704dc4bd8b52383716ee86e1340ae16b60918faf7a35918eac2d84b23c fuzz/fz_fill_007.rvec
+f29a0eba0cfa271f6da913a881a33e27a1b4702c6024c7b06dd82b0227194a8f fuzz/fz_fill_008.rvec
+6e95297a3f68fb65f5351b1cc9699834c51d990d6cbff1ec0199b84ae85e155a fuzz/fz_fill_009.rvec
+0f1dd906411fc35ebeba50a8e3d993c1027421333c9eba071110057644d26e87 fuzz/fz_fill_010.rvec
+e12e9711b158124d61a3c7f28e53df44e197e00b93375587e3e46c9160c1bee5 fuzz/fz_fill_011.rvec
+75d8404cbb40c3efca5cd4a868513d052475d714db0323a3dccb4c5eba12eac8 fuzz/fz_fill_012.rvec
+792e9dfb0d96bf1850f06a376d712c36e0745014c043d5a7b9c5c815133ee87e fuzz/fz_fill_013.rvec
+43cac1751a14607478c8fda4d890aa37a6c9b23504efe9d4eeb98fa854214c1c fuzz/fz_fill_014.rvec
+dc84312b638f066c180c0fea2862fae1a10ecb05b1d98c1c1a987205d5086d32 fuzz/fz_fill_015.rvec
+3c70d6f66934f049266d8b607e025f3d665f87703b2a2120cdfdf0c25ef6c6ca fuzz/fz_fill_016.rvec
+2ab1a3568e9a34a02d1df169420391d856794c7fde9d2a59da340d06acd1672c fuzz/fz_fill_017.rvec
+91a10b123a7570a4ed96718430b88713b2bf18e232f2d1f44894af6968e7f073 fuzz/fz_fill_018.rvec
+b0a20043cd1bd3e2e1f4687417a667c7887e6639e80fbaf5fd3250696933b2de fuzz/fz_fill_019.rvec
+58d41e3a82a7f241e4b529dd3aacbafa778389a14efaf2cb73d87dfc4a2abd02 fuzz/fz_fill_020.rvec
+3529916b40cba7eab840617052c33bc9e300f2902bc5fd74b7fff87e4a9780a1 fuzz/fz_fill_021.rvec
+1e95319a74e8d3164e8a854053cd642bd6a5b781bc0ce269a8181907909bdd83 fuzz/fz_fill_022.rvec
+a875adc324b64cc4347f50f564d32ec017d99a7b3e3c5491ff4ebdb613113c25 fuzz/fz_fill_023.rvec
+0186fa4e98de63fada9c19ef537cf04856e2634f8d21af5625bd304aa27b0429 fuzz/fz_fill_024.rvec
+a32746187a333d01bba0d8b03656f586d89f428df39ddeff9c37a2e51d61edd4 fuzz/fz_fill_025.rvec
+21610532a8b211baea42d8801769feb60510dc7c90548eeea3a133afed74fa1d fuzz/fz_fill_026.rvec
+caa9bb6ab21f61913f414e10a86ad3c0439a6ce02afbe1098f7daa175c88038d fuzz/fz_fill_027.rvec
+66096a4eac59c3560c257d2dea14a5b9ba12d26fcca0ed154c0d704eacf5b6a6 fuzz/fz_fill_028.rvec
+4e170aa6a93fbf5584b3655d518990cddb8ae3ff383b814509942764dcdcfd2b fuzz/fz_fill_029.rvec
+7512c1485462e25d0efbb61c69a4c972c7da99c86c1b481022677c087b9265dc fuzz/fz_fill_030.rvec
+44c0a9502b55e8668a4424236d3eece8aab66ff662886e1f151e0df5ca3779d5 fuzz/fz_fill_031.rvec
+77a05116805c99cb45b1b333602e0050d4d58ef842b44000311c7d6502f04798 fuzz/fz_fill_032.rvec
+56e9ef153c4e26bb1a5b63e57005a32b83491a4928292023fcf21ffbeab814d0 fuzz/fz_fill_033.rvec
+a29d1156eb17a5fb6d736480f7075c6eb330c6db60f0192d279372eec3a2a929 fuzz/fz_fill_034.rvec
+876fde4aa9e67321db2485b94cb1365e238b794a969fe79e44e24bcd77c6256e fuzz/fz_fill_035.rvec
+b5ce6f79012027a7b2d58200fd116d38bb6e156e6513d356756a3eedeff3b469 fuzz/fz_fill_036.rvec
+0977e001fc03a15e9d7a54991229a8cb9f410e29f9b91ad5ba90c95dbf6085f5 fuzz/fz_fill_037.rvec
+243e38493c8e526e4eee5d612696d36204901165519c676ca75ddd06b9c05870 fuzz/fz_fill_038.rvec
+ddfab6f00b96497b7fe7851ebeed7593b6ef4a3cf0522b55f2a116582029c90b fuzz/fz_fill_039.rvec
+83162d986fa32394fc08f94d6d0d4d0c08c303e8b527d2efb92b5e244a7dfa44 fuzz/fz_fill_040.rvec
+3141279f3e27412cb9de733770ae806da7ae95a4dd537fb7021eaeaa1b743cfd fuzz/fz_fill_041.rvec
+8e3e24b862de7de32e938eac2f45e5245053b8c7c1605f088870bb5c1b1976f4 fuzz/fz_fill_042.rvec
+3a9f4a755909741cda59a102ff61fffc71498ea505b10d6668feb92a7f6fba82 fuzz/fz_fill_043.rvec
+33b96db8a12880f85b78f1c340882cf6e6da73099dfaccae051a69e53c35841a fuzz/fz_fill_044.rvec
+1eeb7f3a02268303a7395cc07c2198f6e9812b315497656fc5927a064bf4c0ea fuzz/fz_fill_045.rvec
+2105c8f084e78091b7cd7df59bf560867e0ed33840d97f19e56dd4e26c73e3be fuzz/fz_fill_046.rvec
+a5a3c377b3df3086489434ec3a3de4e633368f09dfc51478983a6e74a2a1a547 fuzz/fz_fill_047.rvec
+7ac70876414e2b7bb117ac66e334b7744133df75bcffec79c26a1e1c2eda1288 fuzz/fz_scis_000.rvec
+f34cc1a8e64774a9cc92e4c25f7066c65356ef797ec859a7e789d9320f406b7e fuzz/fz_scis_001.rvec
+bbffb5deef2e96a648fbd7164e59ee6d0198f25f0881507562f17070a2b72787 fuzz/fz_scis_002.rvec
+9a891e35262e683474534308294bc4792e775fe5a9746d71e3b29cade0b650d9 fuzz/fz_scis_003.rvec
+7f729a89f1b781bbfdd4ed78ff03e7addb208f33f569dddab66fe545a0ff7cfb fuzz/fz_scis_004.rvec
+ac74508b76c52ec7c1941d2dde388c0a2c05162ba804b206ad4788c88e4da3f0 fuzz/fz_scis_005.rvec
+19e24e4f406ec0f8ec11ed96e7f24f38e1bc61dead6ed30933385b8a0945336d fuzz/fz_scis_006.rvec
+68aa2f9890dc40ddf41d7b2b2ef75bdde19dc69e73d2560ba341dfa0354510d7 fuzz/fz_scis_007.rvec
+e2481abbab53f1b7f65b793ebd605ae7f30c1521048c92c00d815fa6ee3f61a7 fuzz/fz_scis_008.rvec
+aff9e31356b03223fe079c959c35cc6f4dad74446ce982434f162476728fce1d fuzz/fz_scis_009.rvec
+91bb7c8810aa3cda126984aa9dd978a8a9a38aca000c090352e2571ef96b71d6 fuzz/fz_scis_010.rvec
+ecb62e7138ce8cc9e9457b2449892d8bbb7d71a328300d1bcb38ccc0d01e70ac fuzz/fz_scis_011.rvec
+5881f0bf72af326150d9a452d40fec4e6a9cc748c0cb3454d2f5343c4ff402b1 fuzz/fz_scis_012.rvec
+a30053958332ed60b9197b6431e17040d378c8822f279798c67a75f2698a6603 fuzz/fz_scis_013.rvec
+0c9b840bcce8e50384851eb2c5a655357738cf6ff6e4598d1abb2a299d222835 fuzz/fz_scis_014.rvec
+f60ac5045f8977320a1e6e7876aadf42b9cfb778688fd1b33b236db4a64288d6 fuzz/fz_scis_015.rvec
+a9462bde6ccbc2d26f29598852c1bcc79f3b2dc8ac0ec3e9ad7673f0efdf1ef4 fuzz/fz_scis_016.rvec
+37cdf0d0ef9a452cd7fc38fc94615879a09ca45f72cbc940809c03bfa2994b66 fuzz/fz_scis_017.rvec
+e08f68298ea0272d9c89ea4e7834316938bc7191ed6e5ba99173eb86eb237f58 fuzz/fz_scis_018.rvec
+0cde04fff4bb2722238ff9b4c1b699a4be164067ff8f9becf1bf223524834b19 fuzz/fz_scis_019.rvec
+43e56ec47ebfe924de77cc8ba59706989fdd80c1c8d241ddb017e5d657a0f79f fuzz/fz_scis_020.rvec
+f3d17eb5e12a7a26ffbd51eb3ee99d5ae457bd507890550577d65a33f9ffb9cc fuzz/fz_scis_021.rvec
+6b9d688686dae105c0db8e94e64ed6634908bb5cc76a25c35e0c9c24eae1a235 fuzz/fz_scis_022.rvec
+3e9f90f8e64a1b769eb839c186a9d836082598924749c1b05f9faea75c1b930f fuzz/fz_scis_023.rvec
+cb4b3282a55387023894bda865a6ada59c76dda8606324a960961d78957e26fb fuzz/fz_scis_024.rvec
+a2b884227b065cdf728fc4bfdde4601326e5895831607b971828a9b27dc902d0 fuzz/fz_scis_025.rvec
+ddef9938f65f469aca153fc7d603e9e4453fe760554655eb27453a4f1ebd0408 fuzz/fz_scis_026.rvec
+41b938376fe0d451762edd8d81f78d41ae84571f4892fd5c95821385f95cd653 fuzz/fz_scis_027.rvec
+b39a89dc2db6b822693b4a720dd49f97a939c7e924d6055385fe8b1d0c3c7190 fuzz/fz_scis_028.rvec
+6c78f1726c08ac861fcda9d9d9f9f2d3dcdc234b4568da6ed06e125d41381735 fuzz/fz_scis_029.rvec
+1f86e34ba900fd3eecb223c7e9dfaddfb6f5a34c1f3169b2a211459163a3befc fuzz/fz_scis_030.rvec
+2177c118e5a4cbf7cdd3bda02caba3c96f9eb51b44f918be99af28177f487a35 fuzz/fz_scis_031.rvec
+c4d84b0ed03400866f8d3e13d294eb11fdbbf3b48a858cdc3d5b8a0ef58bd732 fuzz/fz_scis_032.rvec
+5d1c8005874399f85a23c8e80c2e2d80bdc545da1bd9444d6eb5887bbfe9e699 fuzz/fz_scis_033.rvec
+d349aae25053c54ed090b6ea8348f865aef100517c2499e5d75c96df547c768a fuzz/fz_scis_034.rvec
+d057a21d5ec6c9a905bd7b3aab24d549a9f59190abad8402ebdaa12a424cad56 fuzz/fz_scis_035.rvec
+200d90c196d0fd3daa22b07e792f1343e68b76fbd3c1446897f059e3f141d58e fuzz/fz_scis_036.rvec
+02b22f6a16a5e3762d43e790b201ca3b72305846e14d25f1b76589fba5b1ff97 fuzz/fz_scis_037.rvec
+2f69c62bc7e8d978cb19d05ab1ef0f60e5a38278a8f7dfbea1827337d56c712f fuzz/fz_scis_038.rvec
+f9b6a9661cbc7fe342b073615c4b7081683a2287bd8e60ae24c7e501a4b15219 fuzz/fz_scis_039.rvec
+ab3e4c66276a7e11044344df366ed8e6880b7c8f8906c42018bb94272265b087 fuzz/fz_scis_040.rvec
+4791322bea5c8c171bfdaaa8f23ab694e0601785b9bb28f9ba121181ea506c97 fuzz/fz_scis_041.rvec
+a9865039243518697b8d94743baaa8c71181a6f1d665e443b68c4e212e1abfb5 fuzz/fz_scis_042.rvec
+17f4ad5ea6c0e7093e35a0155228e4dc17824a18967265accc3da2caed7f9b64 fuzz/fz_scis_043.rvec
+7a8714d52568e94a7aeed05b4fb07caeeb90af29e94b76df6edadeac4b49f5f0 fuzz/fz_scis_044.rvec
+5b7e042147f90f0d5b752be2c79e00c1bd1891a7f04092b5b87dbdb1bf1d38aa fuzz/fz_scis_045.rvec
+23f50591ebc6e0e964eeb753611fdffc3dcd676fd7bb9414a3c8cd5a8aa63397 fuzz/fz_scis_046.rvec
+a150166ab52a5e99b4417f2d5582686fe74506c582eadc29bfb829c80dc0a8ba fuzz/fz_scis_047.rvec
+68ce44247bb439d21561f9be476a81b64f3b0675611b6c569bbe0c016cbd9799 fuzz/fz_tri_000.rvec
+b1dbe7642b9152b01078069c613c025f63656f36124c994dfb7e3a8e00b2accb fuzz/fz_tri_001.rvec
+0bf6d6cd0de8bb323d256d67edb24f7627c7aad748f85bbbef565f3c72b80050 fuzz/fz_tri_002.rvec
+a64c8728ab28f24648a62711d51b0070a50cc890991d03686f1f1cb36ad2add7 fuzz/fz_tri_003.rvec
+a2bca5124a246ebb9941c14a00d387d463665f030eb29c21e0b023c672cb622e fuzz/fz_tri_004.rvec
+9975ea7ae00c8cc7a2b602b4ab361f57a2dfd9c1b733730396f59756c7dc2943 fuzz/fz_tri_005.rvec
+c347fc1ee796f4dc02e1dc691e6bf8f4be405d76316d0d52f38f3f6f3c73a43a fuzz/fz_tri_006.rvec
+286c4e0e3b0659818adafa5e373edb4ad631bf45fac2fd4b306f88aec5ecde89 fuzz/fz_tri_007.rvec
+adbda53d396d98d006aaf49d115feedc21a8775daf31aa19a4e2a84c628ea031 fuzz/fz_tri_008.rvec
+a3a8bdcb7e41af24b1acb4d85ce31857778d5084dc2bb1f02afc5e174b6134f6 fuzz/fz_tri_009.rvec
+af16f1c73ae8be8cc3bdb2159ec06ac0bb54209ce1d53c54fd29c6700ec0e232 fuzz/fz_tri_010.rvec
+080d00574a79df09e48b13d1786d52114cf444b1f536643551d0150a9fb90106 fuzz/fz_tri_011.rvec
+67a4b866decc91fc39d8f5211a064f0f25b10d9302c6d6c0398108f2d38f3d83 fuzz/fz_tri_012.rvec
+f88224084326b81f7105d955c3f542d2ae5a9971789eb37ecd925228515e1cde fuzz/fz_tri_013.rvec
+2cb2d5015771069b33f58f1133e405c9867c51346b58871bf4022d819d65b441 fuzz/fz_tri_014.rvec
+b5d3ac1be8e9741cf1973007db85a271a2cda9000a3bf0f2fc8ccada54abad71 fuzz/fz_tri_015.rvec
+8372dcac025956d7633633c35c111f321d2771fa312d90eccb1c27c27733f940 fuzz/fz_tri_016.rvec
+7a63a245b7bfd3f1933e17291589c1ec4e6920b743430fd7a9bcbce6089467a4 fuzz/fz_tri_017.rvec
+166e0c11575458dba18b8b9ee47c4a70b6c1bcb612d10df8384a848d4510696b fuzz/fz_tri_018.rvec
+02e14a43ef78e04209bdf35f4c2bd02d4b7c277c0e4d6b5c8d9a9dab9c4155c8 fuzz/fz_tri_019.rvec
+116760ff4db1163615673f4e7a26a83f325d184f4bfb9a46db9d7ce447251706 fuzz/fz_tri_020.rvec
+ef3df8498e8eeaf5ffceb375b106e9a7ecce57f19c6a75746a1076e64e06035e fuzz/fz_tri_021.rvec
+e07f99a660d918d0e460516f8ed1b6dddc5e0d5539c8d5ce542e418f45673cc8 fuzz/fz_tri_022.rvec
+1d1fb4d2f14f959f60cada0338004279ef04d1018b884ce3a6b6d05165ec5e87 fuzz/fz_tri_023.rvec
+88472237dc672c3300fe314d953a3697deee19a4cbdfc85062158f022554be36 fuzz/fz_tri_024.rvec
+fa59ef912dd943e886f4857d42ba864b7cf4e0881a045f3e62f01c2661976179 fuzz/fz_tri_025.rvec
+2a0e92acbd16618c9d330ed9b9674c040039923513a96c674d9014e724f9ca90 fuzz/fz_tri_026.rvec
+364676c54329a002d30bd9721f1dd2a48c92a5e8f4bcd708ba49452459d0e074 fuzz/fz_tri_027.rvec
+67e9fab96eda77b201e7b96cb07e924fae895fbf9e931f83ccfbe633ecf98930 fuzz/fz_tri_028.rvec
+43e1541b4906a3691e5573be60bb923274897dc4e2dd948d16996eb1d22db214 fuzz/fz_tri_029.rvec
+d3cdadc0ce7faf4bfd4da19cef94e4f0569e7865329472a9be9b4539ba510f0e fuzz/fz_tri_030.rvec
+41799133511c72a4e3ee2681bcc483615972e5f7f586435e50c6e0537c636e9f fuzz/fz_tri_031.rvec
+e6ef651a06f3c74ad7046982b28b458560aed30cfcb56c9212b48e299b6ed1c0 fuzz/fz_tri_032.rvec
+b2466d3ecc8091fc7bf11748e99be4b733bd5e050fa60cfe6ab63006df6e56bb fuzz/fz_tri_033.rvec
+82dffc4c6f4e8b1e415df617fe8db717aad0e6184e04ff4aa559ae83888c1ec3 fuzz/fz_tri_034.rvec
+8cd4135aa703bd569b0084ddc92c9114087ec21a3b823f256e971f477acc8619 fuzz/fz_tri_035.rvec
+7b7ecc20411f7135a28ffd7feafd5edba834be9857e84c298866df1d9ddbfdf9 fuzz/fz_tri_036.rvec
+0d42d18a933cf1d084fee019c08aee64808cccadab19837477f1d8334cfce7a0 fuzz/fz_tri_037.rvec
+93b0345e1aa484fdaa4387b8100e0c5781e5c19dac6ad8308d9c0b27d3df6ad7 fuzz/fz_tri_038.rvec
+f72cab0584a852377545197fad6b4b357f6ec0f69552a4fc373da9ad1559ddb2 fuzz/fz_tri_039.rvec
+43fd9562bd50e0b947df264be83e3d9abc64fe12209cb7812993b9d894b29a41 fuzz/fz_tri_040.rvec
+828bf0631e61a8b48a0996655284b4ba03a219bf3a53f41ab39ecf3aa3789ae3 fuzz/fz_tri_041.rvec
+a51ff44dd5abc30c015aa3eca8c167d125295cfbd476f7adf766138524e43b79 fuzz/fz_tri_042.rvec
+6539e7ec9c7f7c724fbb601d8422428419ca660fe43cfdad79ba6317b2349908 fuzz/fz_tri_043.rvec
+235ce7b60b4526c2f760d49dd8aa77895b5d14bcdd14b17a4b01b5f86ba1e006 fuzz/fz_tri_044.rvec
+6cbb36ebe5ab78de74c02f1faef627d1c66ba98af98a7ce0d1fa25172c27717c fuzz/fz_tri_045.rvec
+ce57297fb03c98584c333279f205843398fa710e7ee8a0964f987d86cbf94362 fuzz/fz_tri_046.rvec
+cc259e5a7931abf24da34dadafa3dbde15753a429d2360ba5e6a499069c442aa fuzz/fz_tri_047.rvec
+EOF
+# Lemmy's n64-systemtest (MIT), which judges itself and prints its results
+# through the IS-Viewer, with its licence, as RustyN64 built it from source
+# (upstream publishes no ROM), from the same fixed commit as the vectors,
+# each checked by hash.
+commit=388b1d439327527782e8d57748b3ec431bb95770
+while read -r sum path; do
+	local_path="n64-systemtest/$path"
+	if [ ! -f "$local_path" ]; then
+		mkdir -p n64-systemtest
+		curl -sSfL -o "$local_path" \
+			"https://raw.githubusercontent.com/doublegate/RustyN64/$commit/tests/roms/n64-systemtest/$path"
+		check "$sum" "$local_path" || { rm -f "$local_path"; echo "$local_path: wrong hash" >&2; exit 1; }
+	fi
+done <<EOF
+fa933e06d05b9200377fb33af9876ce92e8e882619b3494b5a6e594fa5cc28d1 n64-systemtest.z64
+124bb5f52d9d5271ee4baede08ec5df0b8b6c4f53625107587caff91f3ba9954 LICENSE
+EOF

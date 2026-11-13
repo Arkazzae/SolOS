@@ -1,7 +1,7 @@
 # Sol OS's own emulators: each system a library crate with no I/O (frames in,
 # picture, sound and save states out).
 [workspace]
-members = ["n64", "nes", "state"]
+members = ["gb", "n64", "nes", "state"]
 resolver = "3"
 
 [profile.release]

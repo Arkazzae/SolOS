@@ -3,6 +3,13 @@
 version = 4
 
 [[package]]
+name = "gb"
+version = "0.1.0"
+dependencies = [
+ "savestate",
+]
+
+[[package]]
 name = "n64"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,9 @@
+[package]
+name = "n64"
+version = "0.1.0"
+edition = "2024"
+description = "Nintendo 64 emulation core for Sol OS"
+publish = false
+
+[dependencies]
+savestate = { path = "../state" }

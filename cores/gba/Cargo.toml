@@ -1,0 +1,10 @@
+[package]
+name = "gba"
+version = "0.1.0"
+edition = "2024"
+description = "Game Boy Advance emulation core for Sol OS"
+license = "MIT"
+publish = false
+
+[dependencies]
+savestate = { path = "../../shared/savestate" }

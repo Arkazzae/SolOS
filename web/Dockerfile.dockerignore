@@ -1,0 +1,10 @@
+# What the image's build needs is the workspace's sources and web/: no build output, packages, test ROMs
+# or history.
+.git
+target
+web/node_modules
+web/dist
+cores/*/tests/roms/*/
+cores/*/tests/singlestep
+shared/*/tests/singlestep
+docs

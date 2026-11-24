@@ -5,7 +5,8 @@ emulators, written in Rust.
 
 This repository is being opened part by part, starting with the emulator cores. Each core is a
 library with no I/O: the host gives it the game and the buttons, and gets back the picture, the
-sound, the cartridge save and save states.
+sound, the cartridge save and save states. The cores also run in a browser, behind the console's
+own interface ([In a browser](#in-a-browser)).
 
 ## Cores
 
@@ -27,6 +28,16 @@ GBA at 96–120 fps in commercial games, the NES at 107–113 fps, the PlayStati
 Crash Bandicoot 2, the N64 at 60 fps or more in six of the eight measured scenes, and PICO-8's
 Celeste Classic at 322 fps. The Mega Drive is just above full speed (63–67 fps in play), with too
 little to spare for the host yet.
+
+## In a browser
+
+`web/` is the console's interface (Start, the Library, Settings, the game menu) rebuilt in Svelte, with
+the NES, Mega Drive, Game Boy, Game Boy Color, Game Boy Advance and PICO-8 cores compiled to
+WebAssembly (`web/core`). Players add their own game files; games, saves and profiles stay in their
+browser. It installs as an app, works offline, and is a static page anyone can host (a Docker image
+with Caddy is included). The WebAssembly build matches the native one bit for bit on the test ROMs
+it was checked with. How to run and host it: [web/README.md](web/README.md); how it works:
+[docs/web.md](docs/web.md).
 
 ## Building
 
@@ -57,4 +68,5 @@ cargo run --release -p pico8 --example run-pico8 -- game.p8.png 600 out.ppm
 ## License
 
 MIT, see [LICENSE](LICENSE). PICO-8's font (`cores/pico8/src/font.bin`) is Lexaloffle's, released
-under CC0. PICO-8 is a trademark of Lexaloffle Games; this project is not affiliated with them.
+under CC0. The web front's font is Figtree (SIL Open Font License, `web/public/Figtree-OFL.txt`) and
+its icons are Phosphor (MIT). PICO-8 is a trademark of Lexaloffle Games; this project is not affiliated with them.

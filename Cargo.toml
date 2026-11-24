@@ -1,5 +1,6 @@
 # Sol OS's own emulators: each system a library crate with no I/O (frames in,
 # picture, sound and save states out) in cores/, and what they share in shared/.
+# web/core puts them behind one interface for the browser, as WebAssembly.
 [workspace]
 members = [
     "cores/gb",
@@ -12,6 +13,7 @@ members = [
     "shared/disc",
     "shared/savestate",
     "shared/z80",
+    "web/core",
 ]
 resolver = "3"
 

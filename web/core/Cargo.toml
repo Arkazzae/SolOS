@@ -1,0 +1,18 @@
+[package]
+name = "solweb"
+version = "0.1.0"
+edition = "2024"
+description = "Sol OS in a browser: the emulation cores behind one interface, built to WebAssembly"
+license = "MIT"
+publish = false
+
+[lib]
+# cdylib for the browser, rlib for the native check (examples/check.rs).
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+gb = { path = "../../cores/gb" }
+gba = { path = "../../cores/gba" }
+md = { path = "../../cores/md" }
+nes = { path = "../../cores/nes" }
+pico8 = { path = "../../cores/pico8" }

@@ -1,0 +1,27 @@
+{
+  "name": "sol-web",
+  "description": "Sol OS in a browser: games on the console's own emulators, kept in the browser",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "core": "cargo build --release --target wasm32-unknown-unknown -p solweb",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "node tools/check.ts",
+    "test": "node tools/browser-test.ts",
+    "types": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings && tsc --noEmit -p tools"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "@types/node": "26.6.6",
+    "svelte": "5.57.3",
+    "svelte-check": "4.7.8",
+    "typescript": "6.0.3",
+    "vite": "8.3.6"
+  }
+}

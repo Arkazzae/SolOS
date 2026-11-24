@@ -1,0 +1,29 @@
+{
+  "name": "Sol",
+  "short_name": "Sol",
+  "description": "Games on the Sol console's own emulators, in your browser. Your games and saves never leave it.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#0a0a0c",
+  "theme_color": "#0a0a0c",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "file_handlers": [
+    {
+      "action": "./",
+      "accept": {
+        "application/octet-stream": [".nes", ".gb", ".gbc", ".sgb", ".cgb", ".gba", ".md", ".gen", ".smd", ".p8"]
+      }
+    }
+  ],
+  "launch_handler": { "client_mode": "focus-existing" }
+}

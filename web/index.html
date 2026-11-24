@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- The whole page: an empty element the app fills in the browser, from the player's own files. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#0a0a0c">
+    <meta name="description" content="Games on the Sol console's own emulators, in your browser. Your games and saves never leave it.">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Sol">
+    <title>Sol</title>
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest">
+    <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="%BASE_URL%icons/apple-touch-icon.png">
+    <link rel="preload" href="%BASE_URL%Figtree.ttf" as="font" type="font/ttf" crossorigin>
+    <style>html, body { background: #0a0a0c; }</style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

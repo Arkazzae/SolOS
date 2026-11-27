@@ -1,0 +1,12 @@
+[package]
+name = "sms"
+version = "0.1.0"
+edition = "2024"
+description = "Sega Master System and Game Gear emulation core for Sol OS"
+license = "MIT"
+publish = false
+
+[dependencies]
+crc32fast = "1"
+savestate = { path = "../../shared/savestate" }
+z80 = { path = "../../shared/z80" }

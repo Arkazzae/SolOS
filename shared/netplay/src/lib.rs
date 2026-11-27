@@ -1,4 +1,4 @@
-//! The room protocol for browser and native clients. Pad bits in v1 are NES
+//! The room protocol for browser and native clients. NES pad bits are
 //! A, B, Select, Start, Up, Down, Left, Right, in ascending bit order.
 mod timeline;
 pub use timeline::Timeline;

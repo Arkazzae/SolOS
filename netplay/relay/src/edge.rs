@@ -9,6 +9,10 @@ pub struct RoomEngine(Game);
 
 #[wasm_bindgen]
 impl RoomEngine {
+    pub fn version() -> u8 {
+        VERSION
+    }
+
     #[wasm_bindgen(constructor)]
     pub fn new(game: String, epoch: u32, ready: u8) -> Self {
         let mut state = Game::new(game);
@@ -45,7 +49,7 @@ fn encode(event: &Event) -> String {
     serde_json::to_string(event).unwrap()
 }
 
-/// Validate the same v1 wire format as the native handshake before assigning a seat.
+/// Validate the same wire format as the native handshake before assigning a seat.
 #[wasm_bindgen]
 pub fn hello(message: &str) -> Result<String, JsValue> {
     if message.len() > 2048 {

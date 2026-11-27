@@ -67,13 +67,20 @@ impl Timeline {
     }
 
     /// Later predictions must also be replayed when an earlier input changes.
-    pub fn rewind(&mut self) -> Option<u32> {
+    pub fn rewind(&mut self, stalled: bool) -> Option<u32> {
         let index = self
             .entries
             .iter()
             .take((self.received.min(self.frame) - self.base) as usize)
-            .position(|e| e.actual != e.used)?;
-        self.frame = self.base + index as u32;
+            .position(|e| e.actual != e.used);
+        if let Some(index) = index {
+            self.frame = self.base + index as u32;
+        } else if stalled && self.frame > self.received {
+            // Preserve submitted input, but display the last agreed state while waiting.
+            self.frame = self.received;
+        } else {
+            return None;
+        }
         Some(self.frame)
     }
 
@@ -147,8 +154,8 @@ mod web {
         CLIENT.with_borrow_mut(|c| c.confirm(frame, [p1, p2]))
     }
     #[unsafe(no_mangle)]
-    pub extern "C" fn rewind() -> f64 {
-        CLIENT.with_borrow_mut(|c| c.rewind().map_or(-1.0, f64::from))
+    pub extern "C" fn rewind(stalled: bool) -> f64 {
+        CLIENT.with_borrow_mut(|c| c.rewind(stalled).map_or(-1.0, f64::from))
     }
     #[unsafe(no_mangle)]
     pub extern "C" fn advance(seat: usize, predict: bool) -> i32 {
@@ -177,14 +184,30 @@ mod tests {
         assert!(!t.confirm(300, [1, 4]));
         assert!(t.confirm(299, [1, 2]));
         assert_eq!(t.retire(), 299);
-        assert_eq!(t.rewind(), Some(299));
+        assert_eq!(t.rewind(false), Some(299));
         for pad in [2, 4, 8] {
             assert_eq!(t.advance(1, true), Some([1, pad]));
         }
         assert_eq!(t.retire(), 300);
         assert!(t.confirm(300, [1, 4]));
-        assert_eq!(t.rewind(), None);
+        assert_eq!(t.rewind(false), None);
         assert_eq!(t.retire(), 301);
+    }
+
+    #[test]
+    fn a_stall_discards_unconfirmed_execution_but_keeps_the_submitted_inputs() {
+        let mut t = Timeline::default();
+        t.reserve(2, 1);
+        t.reserve(2, 2);
+        t.advance(0, true);
+        t.advance(0, true);
+        assert!(t.confirm(0, [1, 0]));
+        assert_eq!(t.retire(), 1);
+        assert_eq!(t.rewind(true), Some(1));
+        assert_eq!(t.advance(0, false), None);
+        assert!(t.confirm(1, [2, 8]));
+        assert_eq!(t.advance(0, false), Some([2, 8]));
+        assert_eq!(t.retire(), 2);
     }
 
     #[test]

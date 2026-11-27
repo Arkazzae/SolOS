@@ -297,20 +297,29 @@ stay in memory and neither profile's battery save, slot or Quick Resume is writt
   browser assets on the same origin. The object accepts hibernatable sockets and keeps seat
   credentials, disconnect deadlines, readiness and the current epoch in its private SQLite-backed
   storage. Frame inputs and emulator snapshots stay transient. When an active game wakes, the
-  host seeds a new epoch. The room releases its record on exit or expiration.
+  host seeds a new epoch. An empty room releases its SQLite storage and alarm on exit or expiration.
   [Cloudflare WebSockets](https://developers.cloudflare.com/durable-objects/best-practices/websockets/)
-- Each player submits their NES buttons for numbered frames. The server broadcasts a pair once both
-  slots are filled. Each browser queues a few inputs ahead based on observed delay and runs its worker
-  with a separate pair per emulated frame. The controller byte goes from A in bit 0 to Right in bit 7.
-  The renderer, display refresh and audio device stay local.
-- At startup the host sends one machine snapshot. The guest acknowledges loading it before either side
-  advances. Each client hashes a fresh machine snapshot every 300 frames. A mismatch, a return from the
-  game menu or reconnect starts a new synchronization round. The server discards late inputs from older
-  rounds. Each player can reclaim their seat for about a minute after a socket drop while the tab is open.
+- In protocol v2 the relay collects both NES controller bytes for each numbered frame (A at bit 0,
+  Right at bit 7). The Rust client timeline submits bounded input ahead, advances at the emulator's
+  rate and renders the last frame in each batch. A short gap predicts the other player's last known
+  buttons for up to six frames. The worker retains the NES state before each speculative frame.
+  A differing confirmation restores the earliest affected state and replays its suffix with corrected
+  inputs. Confirmed audio plays once. During a prolonged input stall each client returns to its last confirmed frame and waits.
+- A client shows network stalls after 250 ms and probes an unresponsive relay. Eight seconds of
+  silence triggers reconnection. A relay that is reachable while a peer stalls can still reply.
+  Each client measures worker processing time separately and reports sustained overload to the other
+  player. An overloaded client suspends new predictions to leave more CPU time for confirmed frames.
+  The lobby probes after 20 seconds of silence. Cloudflare can answer the probe during hibernation.
+  If a deployment changes the wire version, players in an incompatible room must create a new one.
+- A new epoch starts from the host's confirmed state. The guest acknowledges loading it before play
+  resumes. Both players hash the same confirmed boundary every 300 frames. A mismatch, a return from
+  the game menu or reconnect starts a new synchronization round. The relay discards inputs from older
+  rounds. A disconnected player can reclaim their seat for about a minute with the tab open.
   Leaving explicitly, or restarting the room server, closes the room.
 
 Run the browser-to-browser check against a running deployment with `pnpm test:rooms` in `web/`.
-It uses two fresh Chromium profiles, two display rates and a generated two-controller NES cartridge.
+It measures 60/30 Hz pacing and exercises late input, rollback, a stalled socket, a slow emulator,
+real state divergence, and both emulated controller ports against an independent NES replay.
 `SOL_TEST_URL` selects the installation (default `http://localhost:8080/`).
 
 ### Planned board clients

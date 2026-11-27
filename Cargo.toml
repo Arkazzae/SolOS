@@ -10,6 +10,7 @@ members = [
     "cores/nes",
     "cores/pico8",
     "cores/psx",
+    "cores/sms",
     "netplay/server",
     "netplay/relay",
     "shared/netplay",

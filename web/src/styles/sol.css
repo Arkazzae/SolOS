@@ -338,6 +338,9 @@ kbd { flex: none; min-width: 5.2rem; padding: .4rem var(--s3); border-radius: .8
 .sheet-art { position: relative; aspect-ratio: 4 / 3; border-radius: var(--r-panel); overflow: hidden; background: #000; }
 .sheet-body { display: flex; flex-direction: column; min-width: 0; }
 .sheet-body .h-l { margin-top: var(--s2); overflow-wrap: anywhere; }
+.game-facts { display: flex; flex-wrap: wrap; gap: var(--s3) var(--s6); margin: var(--s4) 0 0; }
+.game-facts dt { color: var(--text-2); font-size: var(--t-xs); }
+.game-facts dd { margin: 0; font-size: var(--t-s); overflow-wrap: anywhere; }
 .sheet-star svg { width: var(--i-l); height: var(--i-l); margin-left: var(--s3); vertical-align: -.2rem; }
 .sheet-body .group { margin-top: var(--s6); }
 .sheet-body .row { min-height: var(--h-l); }

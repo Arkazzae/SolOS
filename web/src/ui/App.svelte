@@ -8,6 +8,7 @@
   import { type Action, focusFirst, keyAction } from './nav.ts';
   import Dialog from './parts/Dialog.svelte';
   import Icon from './parts/Icon.svelte';
+  import Orbit from './parts/Orbit.svelte';
   import Toasts from './parts/Toasts.svelte';
   import TopBar from './parts/TopBar.svelte';
   import { gameHasInput, startPump } from './pump.ts';
@@ -20,9 +21,17 @@
   import { addFiles, library, shelves, start } from './state/library.svelte.ts';
   import { notices, toast } from './state/notify.svelte.ts';
   import { play } from './state/play.svelte.ts';
+  import { prefs } from './state/prefs.svelte.ts';
   import { pwa, registerWorker, watchInstall } from './state/pwa.svelte.ts';
   import { go, SECTIONS, view } from './state/view.svelte.ts';
   import { ACCEPT } from '../engine/systems.ts';
+
+  $effect(() => {
+    const root = document.documentElement;
+    root.dataset.accent = prefs.accent;
+    root.dataset.font = prefs.uiFont;
+    root.dataset.scale = String(prefs.uiScale);
+  });
 
   $effect(() => {
     void start();
@@ -127,15 +136,23 @@
   <div class="insecure"><span class="ic ic-lg tone-accent"><Icon name="warn" /></span><p class="h-m">{t.secureOnly}</p></div>
 {:else if library.ready}
   <div class="sect" inert={!!play.game || notices.dialog !== null || view.sheet !== null} style:--hue={view.hue || HUE_NONE}>
-    <svg class="wave" viewBox="0 0 1920 1080" preserveAspectRatio="none" aria-hidden="true">
-      <defs>
-        <linearGradient id="wave-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" style="stop-color:var(--wave)" /><stop offset=".75" style="stop-color:var(--bg)" />
-        </linearGradient>
-      </defs>
-      <path fill="url(#wave-fill)" d="M0 600C380 420 900 150 1920 90V1080H0z" />
-      <path class="wave-edge" fill="none" d="M0 600C380 420 900 150 1920 90" />
-    </svg>
+    <div class="menu-background" class:moving={prefs.animateWallpaper} aria-hidden="true">
+      {#if prefs.wallpaper === 'wave'}
+        <svg class="wave" viewBox="0 0 1920 1080" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="wave-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" style="stop-color:var(--wave)" /><stop offset=".75" style="stop-color:var(--bg)" />
+            </linearGradient>
+          </defs>
+          <path fill="url(#wave-fill)" d="M0 600C380 420 900 150 1920 90V1080H0z" />
+          <path class="wave-edge" fill="none" d="M0 600C380 420 900 150 1920 90" />
+        </svg>
+      {:else if prefs.wallpaper === 'orbit'}
+        <Orbit moving={prefs.animateOrbit} />
+      {:else}
+        <div class="wallpaper" data-scene={prefs.wallpaper}></div>
+      {/if}
+    </div>
     {#if view.setup}
       <Setup />
     {:else}

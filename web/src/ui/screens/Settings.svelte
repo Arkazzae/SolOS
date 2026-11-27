@@ -13,11 +13,12 @@
   import { type Action, focus, type Hint, move } from '../nav.ts';
   import Hints from '../parts/Hints.svelte';
   import Icon from '../parts/Icon.svelte';
+  import Orbit from '../parts/Orbit.svelte';
   import {
     addProfile, clearAll, library, pickGames, profileName, removeAll, removeProfile, renameProfile, switchProfile,
   } from '../state/library.svelte.ts';
   import { showKeys, toast } from '../state/notify.svelte.ts';
-  import { prefs, setPrefs } from '../state/prefs.svelte.ts';
+  import { ACCENTS, DEFAULT_APPEARANCE, prefs, setPrefs, setWallpaperMotion, UI_FONTS, UI_SCALES, WALLPAPERS, wallpaperMoves } from '../state/prefs.svelte.ts';
   import { install, pwa } from '../state/pwa.svelte.ts';
   import { view } from '../state/view.svelte.ts';
 
@@ -67,6 +68,21 @@
           index: SHADERS.indexOf(prefs.shader), set: (i) => setPrefs({ shader: SHADERS[i] }) },
         { kind: 'toggle', key: 'perf', label: t.perfCounter, line: t.perfCounterLine, on: prefs.perf, set: (on) => setPrefs({ perf: on }) },
         { kind: 'toggle', key: 'full', label: t.fullScreen, line: t.fullScreenLine, on: view.fullscreen, set: () => void toggleFullscreen() },
+      ],
+    },
+    {
+      id: 'appearance', name: t.appearance, icon: 'palette', lead: t.appearanceLead, rows: [
+        { kind: 'choice', key: 'wallpaper', label: t.wallpaper, values: WALLPAPERS.map((id) => t.wallpapers[id]),
+          index: WALLPAPERS.indexOf(prefs.wallpaper), set: (i) => setPrefs({ wallpaper: WALLPAPERS[i] }) },
+        { kind: 'toggle', key: 'motion', label: t.wallpaperMotion, line: t.wallpaperMotionLine,
+          on: wallpaperMoves(), set: setWallpaperMotion },
+        { kind: 'choice', key: 'accent', label: t.accentColour, values: ACCENTS.map((id) => t.accents[id]),
+          index: ACCENTS.indexOf(prefs.accent), set: (i) => setPrefs({ accent: ACCENTS[i] }) },
+        { kind: 'choice', key: 'font', label: t.uiFont, values: UI_FONTS.map((id) => t.fonts[id]),
+          index: UI_FONTS.indexOf(prefs.uiFont), set: (i) => setPrefs({ uiFont: UI_FONTS[i] }) },
+        { kind: 'choice', key: 'scale', label: t.uiScale, values: UI_SCALES.map((scale) => `${scale}%`),
+          index: UI_SCALES.indexOf(prefs.uiScale), set: (i) => setPrefs({ uiScale: UI_SCALES[i] }) },
+        { kind: 'action', key: 'reset-look', label: t.resetAppearance, run: () => setPrefs(DEFAULT_APPEARANCE) },
       ],
     },
     {
@@ -219,7 +235,14 @@
           class:is-info={row.kind === 'info'} data-nav onfocus={() => (focusedKey = row.key)} onclick={() => choose(row)}>
           <span class="set-k">{row.label}</span>
           {#if row.kind === 'choice'}
-            <span class="set-v"><i class="arr" aria-hidden="true">◂</i>{row.values[row.index]}<i class="arr" aria-hidden="true">▸</i></span>
+            <span class="set-v"><i class="arr" aria-hidden="true">◂</i>
+              {#if row.key === 'accent'}<span class="accent-sample" aria-hidden="true"></span>{/if}
+              {#if row.key === 'wallpaper'}
+                <span class="wallpaper-sample" data-scene={prefs.wallpaper} aria-hidden="true">
+                  {#if prefs.wallpaper === 'orbit'}<Orbit />{/if}
+                </span>
+              {/if}
+              {row.values[row.index]}<i class="arr" aria-hidden="true">▸</i></span>
           {:else if row.kind === 'toggle'}
             <span class="switch" class:is-on={row.on} role="switch" aria-checked={row.on}></span>
           {:else if row.kind === 'action'}

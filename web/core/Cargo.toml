@@ -16,3 +16,4 @@ gba = { path = "../../cores/gba" }
 md = { path = "../../cores/md" }
 nes = { path = "../../cores/nes" }
 pico8 = { path = "../../cores/pico8" }
+sms = { path = "../../cores/sms" }

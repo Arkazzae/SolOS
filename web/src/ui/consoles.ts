@@ -19,6 +19,14 @@ const IDENTITY: Readonly<Record<SystemId, Identity>> = {
     hue: '#116b98',
     epic: { en: 'Blue Lightning', pl: 'Błękitna Błyskawica' },
   },
+  sms: {
+    hue: '#9a5a2e',
+    epic: { en: 'The Arcade in the Living Room', pl: 'Automat w Salonie' },
+  },
+  gg: {
+    hue: '#3a7627',
+    epic: { en: 'The Pocket Rival', pl: 'Kieszonkowy Rywal' },
+  },
   gb: {
     hue: '#65690f',
     epic: { en: 'The Green Veteran', pl: 'Zielony Weteran' },

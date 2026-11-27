@@ -15,8 +15,9 @@
 // Every write is one transaction, and a promise settles only when it has committed or aborted: a
 // request's success comes before the commit, and only the commit means the data is kept.
 
+import { catalogEntry, cartridgeCrc, hasCatalog, type CatalogEntry } from './gamedb.ts';
 import type { Saved } from './protocol.ts';
-import { detect, extension, isSystem, nameOf, type SystemId } from './systems.ts';
+import { detect, extension, isSystem, nameOf, titleParts, type SystemId } from './systems.ts';
 
 /** A game as everyone sees it. */
 export interface Title {
@@ -26,6 +27,8 @@ export interface Title {
   system: SystemId;
   size: number;
   added: number;
+  /** Cartridge checksum for the offline catalogue. The SHA-1 id always covers the entire file. */
+  crc?: string;
   /** Its own picture, where its file has one: a PICO-8 cartridge saved as a PNG is its label. */
   cover?: Blob | null;
 }
@@ -41,7 +44,7 @@ export interface Progress {
 }
 
 /** A game with the current profile's progress. */
-export type Game = Title & Progress;
+export type Game = Title & Progress & { metadata?: CatalogEntry };
 
 export interface Profile {
   id: number;
@@ -136,7 +139,34 @@ function progressOf({ played, shot, resume, slot, fav }: Game): Progress {
 }
 
 function merge(title: Title, progress: Progress | undefined): Game {
-  return { cover: null, ...title, ...NO_PROGRESS, ...progress };
+  const metadata = catalogEntry(title.system, title.crc);
+  const game = { cover: null, ...title, ...NO_PROGRESS, ...progress };
+  return metadata ? { ...game, ...titleParts(metadata.title), metadata } : game;
+}
+
+/** Older library records have only a filename. Cache their CRC on first read so an existing
+ * library can be recognised while another tab still has the same database open. */
+async function fillCartridgeCrc(title: Title, system: 'sms' | 'gg'): Promise<void> {
+  const bytes = await rom(title.id);
+  if (!bytes) return;
+  title.crc = cartridgeCrc(system, bytes);
+  try {
+    await write(['games'], (tx) => {
+      // An import or removal in another tab may have replaced this record since we read the ROM.
+      const request = tx.objectStore('games').openCursor(title.id);
+      request.onsuccess = () => {
+        const row = request.result;
+        if (!row) return;
+        const current = row.value as Title;
+        if (current.system === system && current.crc === undefined) {
+          row.update({ ...current, crc: title.crc });
+        }
+      };
+    });
+  } catch (error) {
+    // The checksum is already available for this view. The next read can retry the cache write.
+    console.warn('Could not cache the cartridge checksum:', error);
+  }
 }
 
 /** Every game with the current profile's progress, the last played or added first. A game for a
@@ -151,6 +181,9 @@ export async function games(): Promise<Game[]> {
   ]);
   const prefix = `${profile}/`.length;
   const progress = new Map(keys.map((key, i) => [String(key).slice(prefix), values[i]]));
+  for (const title of titles) {
+    if (title.crc === undefined && hasCatalog(title.system)) await fillCartridgeCrc(title, title.system);
+  }
   return titles
     .filter((title) => isSystem(title.system))
     .map((title) => merge(title, progress.get(title.id)))
@@ -163,7 +196,9 @@ export async function game(id: string): Promise<Game | undefined> {
     done(tx.objectStore('games').get(id) as IDBRequest<Title | undefined>),
     done(tx.objectStore('progress').get(own(id)) as IDBRequest<Progress | undefined>),
   ]);
-  return title && isSystem(title.system) ? merge(title, progress) : undefined;
+  if (!title || !isSystem(title.system)) return undefined;
+  if (title.crc === undefined && hasCatalog(title.system)) await fillCartridgeCrc(title, title.system);
+  return merge(title, progress);
 }
 
 /** Keeps the profile's side of a game (when played, its picture, its flags). */
@@ -183,6 +218,7 @@ export async function add(file: File): Promise<{ game: Game; added: boolean }> {
   if (known) return { game: known, added: false };
   const cover = extension(file.name) === 'p8.png' ? new Blob([rom], { type: 'image/png' }) : null;
   const title: Title = { id, ...nameOf(file.name), system, size: rom.length, added: Date.now(), cover };
+  if (hasCatalog(system)) title.crc = cartridgeCrc(system, rom);
   await write(['roms', 'games'], (tx) => {
     tx.objectStore('roms').put(rom, id);
     tx.objectStore('games').put(title);

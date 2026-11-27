@@ -6,10 +6,14 @@ browser in Svelte. The player adds their own game files. The library and persona
 Two-player NES rooms exchange controller input and temporary machine states through a Rust relay. The app is self-hostable
 ([web/README.md](../web/README.md)).
 
-Status (2026-11-23): NES, Mega Drive, Game Boy, Game Boy Color, Game Boy Advance and PICO-8. Test ROMs for each of
-the six start and draw in Chrome, and the WebAssembly build matches the native one bit for bit on the
-eleven test ROMs below. The browser tests pass in headless Chrome, and the screens were checked at 1440×900 and
-390×844. The built page, served by `vite preview`, was driven by the keyboard through a first run, a dropped
+The browser plays NES, Mega Drive, Master System, Game Gear, Game Boy, Game Boy Color, Game Boy Advance and
+PICO-8. The Master System and Game Gear checks cover cartridge import, rendering, SRAM and Quick Resume.
+Both Sega diagnostics were also imported through the file picker and played after an offline reload
+in Chromium. Holding Z turned each picture green, and Quick Resume kept that frame at the console’s
+native resolution. Native and WebAssembly comparison results for all eight systems are listed below.
+
+The browser tests pass in headless Chromium. Screens were checked at 1440×900 and 390×844.
+The built page, served by `vite preview`, was driven by the keyboard through a first run, a dropped
 game, the game menu (save, load, start over, leave), the Library, a profile and the language; with its server
 stopped it then started again from its service worker and played. Not checked yet: a real pad, Safari,
 Firefox, a phone's touch screen and the sound by ear. N64 and PlayStation are not in the page and have not
@@ -32,9 +36,7 @@ pnpm test         # the browser tests in a fresh headless Chromium or Chrome pro
 The single-player page needs only a static host: it does not use SharedArrayBuffer, so it does not need
 COOP or COEP. It needs a secure page (https, or localhost): `crypto.subtle` (a game's SHA-1), the AudioWorklet
 and the service worker exist only there, and the page says so instead of starting elsewhere. The font, icons
-and everything else come with the page. A build is about 800 KB over the wire: the WebAssembly module with its
-five cores 306 KB after gzip, the app's scripts 53 KB, the stylesheet 7 KB, the font 63 KB and the consoles'
-pictures 356 KB.
+and everything else come with the page. The release WebAssembly module with all six cores is about 345 KB after gzip.
 
 ## Layout
 
@@ -76,6 +78,8 @@ Each core is a thin adapter (`src/cores/`) that gives the page the picture a TV 
 |---|---|---|---|---|---|
 | NES | 240×224, the 8 overscan pixels at each edge cropped | 8:7 | 60.10 | mono, 48 kHz | 2 |
 | Mega Drive | 256 or 320 × 224 (240 on a European console), as the game switches | 8:7 at 256, 32:35 at 320 | 59.92, 49.70 in Europe | stereo, 48 kHz | 2 |
+| Master System | 256×192 or 256×224, up to 256×240 on PAL | 8:7 | 59.92 NTSC, 49.70 PAL | stereo output, 48 kHz | 2 |
+| Game Gear | 160×144 LCD window, full TV picture in Master System mode | square, 8:7 in Master System mode | 59.92 | stereo, 48 kHz | 1 |
 | Game Boy, Game Boy Color | 160×144: four shades in the original's green, or the Color's RGB555 | square | 59.73 | stereo, 48 kHz | 1 |
 | Game Boy Advance | 240×160 | square | 59.73 | stereo, 48 kHz | 1 |
 | PICO-8 | 128×128, its 32 colours | square | 60 | mono, 22 050 Hz | 4 |
@@ -87,15 +91,15 @@ runs it at 60 and a 30 Hz cartridge makes a frame every other refresh, its sound
 The buttons go where they sit on the console's own pad. The pad bits are the browser's standard gamepad, which
 has the Xbox layout, and the keyboard is the first player's pad:
 
-| Pad | Key | NES, GB, GBC | GBA | Mega Drive | PICO-8 |
-|---|---|---|---|---|---|
-| bottom face button | Z | B | B | B | O |
-| right face button | X | A | A | C | X |
-| left face button | A | | | A | X |
-| top face button | S | | | Y | O |
-| LB, RB | Q, W | | L, R | X, Z | |
-| Start | Enter | Start | Start | Start | pause menu |
-| Back | Shift | Select | Select | Mode | pause menu |
+| Pad | Key | NES, GB, GBC | GBA | Mega Drive | Master System / Game Gear | PICO-8 |
+|---|---|---|---|---|---|---|
+| bottom face button | Z | B | B | B | 1 | O |
+| right face button | X | A | A | C | 2 | X |
+| left face button | A | | | A | | X |
+| top face button | S | | | Y | | O |
+| LB, RB | Q, W | | L, R | X, Z | | |
+| Start | Enter | Start | Start | Start | Pause / Start | pause menu |
+| Back | Shift | Select | Select | Mode | | pause menu |
 
 The module never asks for the time, because std's clock panics on wasm32-unknown-unknown. The page passes it in
 as UTC and the player's offset, at power-on, after a state goes in and before each save. The GBA's cartridge
@@ -114,8 +118,8 @@ stand in for the C library's.
 `tools/check.ts` runs the same games in the wasm build under Node and natively (`examples/check.rs`), with the
 same button presses and the same fixed clock. It compares a hash of every frame's picture and sound, and the
 size of the save state at the end. The wasm build must match the native one bit for bit, the same rule the ARM
-builds follow. Without games given it runs the test ROMs the cores' `tests/roms/fetch.sh` fetch, the Mega
-Drive's own test ROM (`make-test-rom`) and PICO-8's `examples/carts/orbit.p8`.
+builds follow. With no arguments it runs the fetched test ROMs present on disk, generates diagnostic
+cartridges for Mega Drive, Master System and Game Gear, and runs PICO-8's `examples/carts/orbit.p8`.
 
 Measured 2026-11-23, 600 frames each:
 
@@ -132,6 +136,10 @@ Measured 2026-11-23, 600 frames each:
 | GBA | armwrestler-gba-fixed | same | 3166 / 4584 |
 | Mega Drive | make-test-rom | same | 2179 / 3012 |
 | PICO-8 | orbit | same | 57763 / 89882 |
+
+On 2026-11-27 both Sega diagnostics matched the native build over 600 frames, including stereo sound
+and final state size. Master System produced a 256×192 picture and Game Gear produced 160×144.
+FluBBa's SMS VDP Test 1.31 also matched for 600 frames.
 
 Short runs measure V8 before it has optimised the module, so the wasm numbers are low; all of them are dozens of
 times what a game needs.

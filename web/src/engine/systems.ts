@@ -147,7 +147,11 @@ function gbHeader(rom: Uint8Array): boolean {
  * ("(USA)", "[!]") apart, for the card's second line. */
 export function nameOf(file: string): { name: string; tags: string } {
   const ext = extension(file);
-  const base = (ext ? file.slice(0, file.length - ext.length - 1) : file).replace(/_/g, ' ');
+  return titleParts((ext ? file.slice(0, file.length - ext.length - 1) : file).replace(/_/g, ' '));
+}
+
+/** Split a display title and its release tags after any file extension has been removed. */
+export function titleParts(base: string): { name: string; tags: string } {
   const at = base.search(/\s*[([]/);
   if (at <= 0) return { name: base.trim(), tags: '' };
   return { name: base.slice(0, at).trim(), tags: base.slice(at).trim() };

@@ -183,6 +183,79 @@ async function openRetry(): Promise<void> {
   check((await bounded(isolated.games())).length === 0, 'a failed database open was cached permanently');
 }
 
+/** A HALT and padding with four checksum bytes. No commercial ROM data is needed for catalogue tests. */
+function catalogCartridge(tail: number[]): Uint8Array<ArrayBuffer> {
+  const rom = new Uint8Array(0x4000);
+  rom[0] = 0x76;
+  rom.set(tail, rom.length - 4);
+  return rom;
+}
+
+async function upgradeCatalog(): Promise<void> {
+  const id = '6b0d16a8bbe86b672d82ab760aa039b90683ab9f';
+  const rom = catalogCartridge([49, 249, 150, 14]); // Master System Sonic, CRC B519E833.
+  await new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open('sol', 2);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction(['games', 'roms', 'progress', 'saves', 'resume', 'slots'], 'readwrite');
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onabort = () => { db.close(); reject(tx.error); };
+      tx.objectStore('games').put({
+        id, system: 'sms', name: 'From the old library', tags: '', size: rom.length, added: 123,
+      });
+      tx.objectStore('roms').put(rom, id);
+      tx.objectStore('progress').put({ played: 456, shot: null, fav: true, resume: true, slot: true }, `1/${id}`);
+      for (const name of ['saves', 'resume', 'slots']) tx.objectStore(name).put(Uint8Array.of(7), `1/${id}`);
+    };
+  });
+  const [game] = await store.games();
+  check(game?.id === id && game.name === 'Sonic The Hedgehog' && game.tags === '(USA, Europe, Brazil) (En)', 'existing title was not matched');
+  check(game.metadata?.year === 1991 && game.metadata.studio === 'Ancient' && game.metadata.players === 1, 'legacy metadata mismatch');
+  check(game.added === 123 && game.played === 456 && game.fav && game.resume && game.slot, 'upgrade changed profile progress');
+  for (const read of [store.sram, store.resumeState, store.slot]) check((await read(id))?.[0] === 7, 'upgrade lost saved data');
+  // After the first read, neither a game lookup nor a library refresh needs the ROM again.
+  const get = IDBObjectStore.prototype.get;
+  IDBObjectStore.prototype.get = function (key) {
+    if (this.name === 'roms') throw new Error('a cached cartridge was read again');
+    return get.call(this, key);
+  };
+  try {
+    check((await store.game(id))?.crc === 'B519E833' && (await store.games())[0]?.name === game.name, 'legacy CRC was not cached');
+  } finally {
+    IDBObjectStore.prototype.get = get;
+  }
+  const duplicate = await store.add(new File([rom], 'renamed.sms'));
+  check(!duplicate.added && duplicate.game.id === id && duplicate.game.name === game.name, 'renaming duplicated the game');
+  await store.remove(id);
+}
+
+async function recognizeCartridges(): Promise<void> {
+  const rom = catalogCartridge([185, 8, 207, 253]); // Game Gear Sonic Chaos, CRC 663F2ABB.
+  const prefixed = new Uint8Array(rom.length + 512);
+  prefixed.fill(0x55, 0, 512);
+  prefixed.set(rom, 512);
+  const plain = await store.add(new File([rom], 'game.gg'));
+  const wrapped = await store.add(new File([prefixed], 'backup.gg'));
+  for (const { game } of [plain, wrapped]) {
+    check(game.name === 'Sonic Chaos' && game.tags === '(USA, Europe, Brazil) (En)', 'wrong title or release tags');
+    check(game.metadata?.year === 1993 && game.metadata.studio === 'Aspect' && game.metadata.players === 2, 'wrong cartridge facts');
+    check((await store.game(game.id))?.metadata?.title === game.metadata.title, 'facts did not survive a read');
+  }
+  check(plain.game.id !== wrapped.game.id, 'catalogue lookup replaced the file identity');
+  await store.remove(plain.game.id);
+  // The same bytes on a different machine must not match the Game Gear catalogue.
+  const other = await store.add(new File([rom], 'My_copy (JP).sms'));
+  check(other.game.name === 'My copy' && other.game.tags === '(JP)' && !other.game.metadata, 'wrong-console CRC selected a game');
+  const unknown = await store.add(new File([Uint8Array.of(0x76)], 'Sonic Chaos.gg'));
+  check(unknown.game.name === 'Sonic Chaos' && !unknown.game.metadata, 'a filename alone supplied catalogue facts');
+  const sparse = await store.add(new File([catalogCartridge([235, 2, 99, 30])], 'backup.gg'));
+  check(sparse.game.name === 'Prince of Persia' && sparse.game.metadata?.studio === 'Domark'
+    && sparse.game.metadata.year === undefined, 'a missing catalogue field changed the match');
+  for (const { game } of [wrapped, other, unknown, sparse]) await store.remove(game.id);
+}
+
 async function abortedWrite(): Promise<void> {
   await store.putSram('retry', new Uint8Array([1]));
   const abort = abortNextPut('saves');
@@ -412,6 +485,8 @@ export async function run(): Promise<{ ok: boolean; cases: { name: string; resul
   const cases: { name: string; result: string }[] = [];
   for (const [name, test] of [
     ['database open can be retried', openRetry],
+    ['v2 Sega cartridges gain metadata and keep their saves', upgradeCatalog],
+    ['Sega cartridge metadata follows content and console', recognizeCartridges],
     ['transaction abort rejects and allows retry', abortedWrite],
     ['game import is atomic and can be retried', atomicAdd],
     ['Master System and Game Gear import, play and resume', segaCartridges],

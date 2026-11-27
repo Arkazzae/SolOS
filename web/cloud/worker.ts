@@ -12,7 +12,7 @@ type Handshake = { type: 'create'; core: string; game: string; name: string }
   | { type: 'resume'; code: string; token: string };
 type Attachment = { seat: Seat } | { code: string; create: boolean; until: number };
 interface State {
-  code: string; game: string; core: string; name: string;
+  version: number; code: string; game: string; core: string; name: string;
   tokens: [string, string | null]; expires: [number, number]; epoch: number; ready: number;
 }
 
@@ -62,12 +62,17 @@ export class SolRoom extends DurableObject<Env> {
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('{"type":"ping"}', '{"type":"pong"}'));
     for (const socket of ctx.getWebSockets()) {
       const attachment: Attachment | null = socket.deserializeAttachment();
       if (attachment && 'seat' in attachment) this.seats[attachment.seat] = socket;
       else if (attachment) this.pending.set(socket, attachment);
     }
     this.state = ctx.storage.kv.get<State>('room');
+    if (this.state && this.state.version !== RoomEngine.version()) {
+      this.end('version');
+      return;
+    }
     if (this.state) {
       let lostSeat = false;
       for (const seat of [0, 1] as const) {
@@ -82,6 +87,7 @@ export class SolRoom extends DurableObject<Env> {
       if (lostSeat) { this.save(); this.schedule(); }
       const sync = this.game.wake();
       if (sync) { this.save(); this.deliver(sync); }
+      else if (lostSeat) this.deliver('{"type":"wait"}');
     }
   }
 
@@ -105,7 +111,7 @@ export class SolRoom extends DurableObject<Env> {
     let seat: Seat;
     if (request.type === 'create') {
       if (!connection.create || this.state) throw 'missing';
-      this.state = { code: connection.code, game: request.game, core: request.core, name: request.name,
+      this.state = { version: RoomEngine.version(), code: connection.code, game: request.game, core: request.core, name: request.name,
         tokens: [random(32), null], expires: [0, 0], epoch: 0, ready: 0 };
       this.game = new RoomEngine(request.game, 0, 0);
       seat = 0;
@@ -170,7 +176,8 @@ export class SolRoom extends DurableObject<Env> {
     const event = JSON.parse(reply);
     const target = event.type === 'snapshot' ? 1 : event.type === 'pong' ? event.seat : null;
     this.seats.forEach((socket, seat) => {
-      if (socket && (target === null || seat === target) && socket.readyState === WebSocket.OPEN) socket.send(reply);
+      if (!socket || (target !== null && seat !== target) || socket.readyState !== WebSocket.OPEN) return;
+      try { socket.send(reply); } catch { this.webSocketError(socket); }
     });
   }
 

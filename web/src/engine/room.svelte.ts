@@ -9,7 +9,7 @@ type Pads = [number, number];
 type Start = { type: 'create'; game: string; name: string } | { type: 'join'; code: string };
 type Event =
   | { type: 'seat'; code: string; seat: number; token: string; game: string; name: string }
-  | { type: 'pong'; seat: number }
+  | { type: 'pong'; seat?: number }
   | { type: 'performance'; epoch: number; seat: number; slow: boolean }
   | { type: 'wait' }
   | { type: 'sync'; epoch: number }
@@ -30,7 +30,7 @@ interface Timeline extends WebAssembly.Exports {
   reserve(lead: number, pad: number): number;
   confirm(frame: number, p1: number, p2: number): number;
   advance(seat: number, predict: boolean): number;
-  rewind(): number;
+  rewind(stalled: boolean): number;
   retire(): number;
   reset(frame: number): void;
   check_interval(): number;
@@ -77,6 +77,8 @@ export class Room {
   private token = '';
   private ws: WebSocket | null = null;
   private timer = 0;
+  private handshake = 0;
+  private watchdog: number;
   private deadline = 0;
   private closed = false;
   private machine: RoomMachine | null = null;
@@ -88,7 +90,7 @@ export class Room {
   private nextCheck = 0;
   private lastFrameAt = 0;
   private lastMessageAt = 0;
-  private lastPing = 0;
+  private probeAt: number | null = null;
   private measuredAt = 0;
   private work = 0;
   private completed = 0;
@@ -97,6 +99,7 @@ export class Room {
   networkWait = $state(false);
 
   constructor(request: Start) {
+    this.watchdog = window.setInterval(() => this.monitor(performance.now()), 250);
     void Promise.all([coreBuild(), timeline()]).then(([core, client]) => {
       this.timeline = client;
       this.connect({ ...request, version: 2, core });
@@ -109,25 +112,31 @@ export class Room {
     if (hello.type !== 'create') url.searchParams.set('room', hello.code);
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = this.ws = new WebSocket(url);
-    const timeout = window.setTimeout(() => ws.close(), 10000);
+    const remaining = this.deadline ? Math.max(0, this.deadline - Date.now()) : 10000;
+    this.handshake = window.setTimeout(() => this.lost(ws), Math.min(10000, remaining));
     ws.onopen = () => ws.send(JSON.stringify(hello));
     ws.onmessage = ({ data }: MessageEvent<string>) => {
       if (this.closed || this.ws !== ws) return;
-      clearTimeout(timeout);
       this.lastMessageAt = performance.now();
+      this.probeAt = null;
       try { this.receive(JSON.parse(data) as Event); } catch { this.fail('protocol'); }
     };
-    ws.onclose = () => {
-      clearTimeout(timeout);
-      if (this.closed || this.ws !== ws) return;
-      this.ws = null;
-      this.epoch = 0;
-      if (!this.token) return this.fail('unavailable');
-      this.deadline ||= Date.now() + 60000;
-      if (Date.now() >= this.deadline) return this.fail('ended');
-      this.phase = 'reconnecting';
-      this.timer = window.setTimeout(() => this.connect({ type: 'resume', version: 2, code: this.code, token: this.token }), 800);
-    };
+    ws.onclose = () => this.lost(ws);
+  }
+
+  private lost(ws: WebSocket): void {
+    if (this.closed || this.ws !== ws) return;
+    clearTimeout(this.handshake);
+    this.ws = null;
+    this.probeAt = null;
+    ws.onopen = ws.onclose = ws.onmessage = null;
+    ws.close();
+    this.epoch = 0;
+    if (!this.token) return this.fail('unavailable');
+    this.deadline ||= Date.now() + 60000;
+    if (Date.now() >= this.deadline) return this.fail('ended');
+    this.phase = 'reconnecting';
+    this.timer = window.setTimeout(() => this.connect({ type: 'resume', version: 2, code: this.code, token: this.token }), 800);
   }
 
   private send(msg: object): void {
@@ -137,6 +146,7 @@ export class Room {
   private receive(event: Event): void {
     switch (event.type) {
       case 'seat':
+        clearTimeout(this.handshake);
         this.code = event.code;
         this.game = event.game;
         this.name = event.name;
@@ -161,7 +171,7 @@ export class Room {
           const frame = this.timeline.stable() >>> 0;
           void this.machine.snapshot(frame, true).then(bytes => {
             if (this.epoch === event.epoch) this.send({ type: 'snapshot', epoch: event.epoch, frame, data: toBase64(bytes) });
-          }).catch(() => this.fail('snapshot'));
+          }).catch(() => { if (this.epoch === event.epoch) this.fail('snapshot'); });
         }
         return;
       case 'snapshot':
@@ -169,7 +179,7 @@ export class Room {
           const bytes = Uint8Array.from(atob(event.data), c => c.charCodeAt(0));
           void this.machine.restore(bytes).then(() => {
             if (this.epoch === event.epoch) this.send({ type: 'loaded', epoch: event.epoch });
-          }).catch(() => this.fail('snapshot'));
+          }).catch(() => { if (this.epoch === event.epoch) this.fail('snapshot'); });
         }
         return;
       case 'go':
@@ -225,14 +235,14 @@ export class Room {
     const t = this.timeline;
     const oldHead = t.frame() >>> 0;
     const oldStable = t.stable() >>> 0;
-    const rewind = t.rewind() >= 0;
+    const rewind = t.rewind(this.networkWait) >= 0;
     const start = t.frame() >>> 0;
     const goal = Math.min(this.nextCheck, oldHead + due);
     const pads: Pads[] = [];
     this.submit(bits);
     while ((t.frame() >>> 0) < goal) {
       const replay = (t.frame() >>> 0) < oldHead;
-      const pair = t.advance(this.seat, replay || !this.localSlow);
+      const pair = t.advance(this.seat, !this.networkWait && (replay || !this.localSlow));
       if (pair < 0) break;
       pads.push([decode(pair & 255), decode(pair >>> 8)]);
       // A 30 Hz screen consumes two 60 Hz frames on a tick. Keep the wire
@@ -241,7 +251,7 @@ export class Room {
     }
     const stable = t.retire() >>> 0;
     if (!pads.length && stable === oldStable && !rewind) return null;
-    return { start, rewind, pads, stable, fresh: (t.frame() >>> 0) - oldHead };
+    return { start, rewind, pads, stable, fresh: Math.max(0, (t.frame() >>> 0) - oldHead) };
   }
 
   check(stable: number): void {
@@ -253,15 +263,19 @@ export class Room {
     }).catch(() => { if (this.epoch === epoch) this.fail('snapshot'); });
   }
 
-  monitor(now: number): void {
-    if (this.phase !== 'playing') return;
-    this.networkWait = now - this.lastFrameAt > 250;
-    if (!this.networkWait) return;
-    // A live relay answers even when the other player is behind. Reconnect a
-    // silent transport independently of the browser's TCP timeout.
-    if (now - this.lastMessageAt > 8000) this.ws?.close();
-    else if (now - this.lastPing > 1500) {
-      this.lastPing = now;
+  private monitor(now: number): void {
+    if (!this.token || this.ws?.readyState !== WebSocket.OPEN) return;
+    if (this.phase !== 'playing' && this.phase !== 'sync' && this.phase !== 'waiting') return;
+    this.networkWait = this.phase === 'playing' && now - this.lastFrameAt > 250;
+    if (this.probeAt !== null) {
+      if (now - this.probeAt >= 6500) this.lost(this.ws);
+      return;
+    }
+    // Idle lobbies can hibernate. During play a probe distinguishes a live
+    // relay waiting for input from a socket that has silently stopped working.
+    const interval = this.phase === 'waiting' ? 20000 : 1500;
+    if (now - this.lastMessageAt >= interval) {
+      this.probeAt = now;
       this.send({ type: 'ping' });
     }
   }
@@ -293,6 +307,8 @@ export class Room {
     this.closed = true;
     this.epoch = 0;
     clearTimeout(this.timer);
+    clearTimeout(this.handshake);
+    clearInterval(this.watchdog);
     this.send({ type: 'leave' });
     this.ws?.close();
     this.machine = null;

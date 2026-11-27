@@ -29,7 +29,10 @@ other player the room code. They can open the link or choose **Join by code** on
 installation. Both players need the same NES file and emulator build. Each presses **Ready to play**.
 Each browser's first gamepad or keyboard controls its assigned seat, P1 or P2.
 
-The host may start with their local progress. The session uses temporary saves for both players.
+The host may start with their local progress. With Quick Resume off, the room starts from the
+cartridge save. The session uses temporary saves for both players. A brief delay can be covered by
+up to six predicted frames. Longer stalls show a waiting message. Each screen also indicates when
+either player’s emulator is running slowly.
 Opening the game menu pauses the room. A brief network drop reconnects automatically while the tab
 remains open. Choosing **Exit** closes the room for both players.
 

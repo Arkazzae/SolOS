@@ -299,7 +299,7 @@
     return `${s.fps.toFixed(1)} fps · ${s.speed.toFixed(0)} % · ${s.refresh.toFixed(1)} Hz ${s.locked ? 'vsync' : 'clock'} · ` +
       `${s.work.toFixed(1)} ms/run · sound ${s.sound.toFixed(0)} ms, ${s.dry} dry`;
   });
-  const keys = $derived([commonGameKeys()[0]!, ...buttonKeys(system), ...commonGameKeys().slice(1)]);
+  const keys = $derived([commonGameKeys()[0]!, ...buttonKeys(system), ...commonGameKeys().slice(1).filter(([key]) => !online.room || key !== 'Tab')]);
 </script>
 
 <svelte:window {onkeydown} onpointerdown={() => speaker?.resume()} />
@@ -319,7 +319,7 @@
     {@const note = online.room.localSlow ? t.roomLocalSlow : online.room.peerSlow ? t.roomPeerSlow : online.room.networkWait ? t.roomNetworkWait : ''}
     {#if note}<div class="room-health" role="status">{note}</div>{/if}
   {/if}
-  <header class="bar">
+  <header class="bar" inert={!!overlay}>
     <button class="round" title={t.exit} aria-label={t.exit} onclick={leave}><Icon name="close" /></button>
     <div class="bar-title"><b>{game.name}</b><span>{system.short}</span></div>
     <div class="bar-tools">

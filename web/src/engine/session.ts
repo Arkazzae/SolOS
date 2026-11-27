@@ -225,7 +225,6 @@ export class Session {
       const times = SPEEDS[fast]!;
       const frames = this.pace.frames(dt, times, !!this.room);
       if (this.room) {
-        this.room.monitor(performance.now());
         if (this.room.phase === 'playing') {
           const step = this.busy ? null : this.room.step(pads[0] ?? 0, frames);
           this.pace.defer(frames - (step?.fresh ?? 0));
@@ -366,7 +365,7 @@ export class Session {
           fps: c.runs / seconds,
           speed: (c.ran / seconds / this.pace.frameHz) * 100,
           refresh: this.pace.refresh,
-          locked: this.pace.locked,
+          locked: !this.room && this.pace.locked,
           work: c.runs > 0 ? c.work / c.runs : 0,
           sound: sound.level,
           dry: sound.dry,

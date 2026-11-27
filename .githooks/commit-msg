@@ -1,0 +1,35 @@
+#!/bin/sh
+set -eu
+
+# Git calls the hook with an editor file. CI passes a stored commit or PR title.
+if [ "$#" -eq 1 ]; then
+    message=$(git stripspace --strip-comments < "$1")
+else
+    message=$(cat "$1")
+fi
+subject=$(printf '%s\n' "$message" | head -n 1)
+
+# "AI" also names the N64 audio interface. Only match it in tool credits.
+tools='ai|a\.i\.|artificial intelligence|chatgpt|openai|claude|anthropic|copilot|codex|gemini|cursor([ -]?(agent|bot))?'
+credit='co-authored-by:|signed-off-by:|assisted-by:|(generated|written|created|assisted)[ -](by|with)'
+if printf '%s\n' "$message" | grep -Eiq "(^generated-by:|($credit).*[[:blank:]<@/]($tools)([^[:alnum:]]|$))"; then
+    echo 'Remove the tool attribution. Human co-author trailers are welcome.' >&2
+    exit 1
+fi
+
+# Accept the default Git subject only for an actual merge, never for a PR title.
+case "$subject" in
+    'Merge '*)
+        case "${2:-editor}" in
+            editor) git rev-parse --verify --quiet MERGE_HEAD >/dev/null && exit 0 ;;
+            title) ;;
+            *) git rev-parse --verify --quiet "$2^2" >/dev/null && exit 0 ;;
+        esac ;;
+esac
+
+pattern='^(feat|fix|refactor|test|docs|build|ci|chore|perf)(\([a-z0-9][a-z0-9-]*\))?: [a-z0-9](.*[^.[:space:]])?$'
+if ! printf '%s\n' "$subject" | LC_ALL=C grep -Eq "$pattern" || [ "$(printf %s "$subject" | wc -m)" -gt 72 ]; then
+    echo 'Use type(scope): subject. Start lowercase, use up to 72 characters and omit the final period.' >&2
+    echo 'Example: fix(gb): restore the timer after loading a save' >&2
+    exit 1
+fi

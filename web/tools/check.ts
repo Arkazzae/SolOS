@@ -1,7 +1,7 @@
 // Runs games in the WebAssembly build of web/core under Node, through the same wrapper the page uses
 // (src/engine/core.ts), and natively (core/examples/check.rs), and compares a hash of every frame's
 // picture and sound: the browser's machine must be the PC's bit for bit. Without games given it runs the
-// cores' test ROMs that are fetched (cores/*/tests/roms/fetch.sh), the Mega Drive's own test ROM and a
+// cores' test ROMs that are fetched (cores/*/tests/roms/fetch.sh), the Sega cores' diagnostic cartridges and a
 // PICO-8 cartridge from the repository.
 //
 //     pnpm check                        the test ROMs, 600 frames each
@@ -21,6 +21,8 @@ const CLOCK = 1_700_000_000;
 
 const scratch = mkdtempSync(join(tmpdir(), 'sol-check-'));
 const mdRom = join(scratch, 'sol-md.md');
+const smsRom = join(scratch, 'sol-sms.sms');
+const ggRom = join(scratch, 'sol-gg.gg');
 
 const DEFAULT_GAMES = [
   'nes=cores/nes/tests/roms/nes-test-roms/ny2011/ny2011.nes',
@@ -33,6 +35,8 @@ const DEFAULT_GAMES = [
   'gba=cores/gba/tests/roms/tonc/bin/snd1_demo.gba',
   'gba=cores/gba/tests/roms/armwrestler/armwrestler-gba-fixed.gba',
   `md=${mdRom}`,
+  `sms=${smsRom}`,
+  `gg=${ggRom}`,
   'pico8=cores/pico8/examples/carts/orbit.p8',
 ].map((game) => {
   const at = game.indexOf('=');
@@ -99,6 +103,7 @@ const given = args
   .map((arg) => `${arg.slice(0, arg.indexOf('='))}=${resolve(arg.slice(arg.indexOf('=') + 1))}`);
 if (given.length === 0) {
   execFileSync('cargo', ['run', '--release', '-q', '-p', 'md', '--example', 'make-test-rom', '--', mdRom], { cwd: root, stdio: 'inherit' });
+  execFileSync('cargo', ['run', '--release', '-q', '-p', 'sms', '--example', 'make-sms-test-rom', '--', smsRom, ggRom], { cwd: root, stdio: 'inherit' });
 }
 const list = given.length > 0 ? given : DEFAULT_GAMES.filter((game) => existsSync(game.slice(game.indexOf('=') + 1)));
 if (list.length === 0) {

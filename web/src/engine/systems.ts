@@ -4,7 +4,7 @@
 
 import { Pad } from './core.ts';
 
-export type SystemId = 'nes' | 'md' | 'gb' | 'gbc' | 'gba' | 'pico8';
+export type SystemId = 'nes' | 'md' | 'sms' | 'gg' | 'gb' | 'gbc' | 'gba' | 'pico8';
 
 export interface System {
   id: SystemId;
@@ -35,6 +35,14 @@ export const SYSTEMS: Readonly<Record<SystemId, System>> = {
       [Pad.start, 'Start'], [Pad.select, 'Mode'],
     ],
   },
+  sms: {
+    id: 'sms', short: 'SMS', name: 'Master System', full: 'Sega Master System', extensions: ['sms'], players: 2,
+    buttons: [[Pad.south, '1'], [Pad.east, '2'], [Pad.start, 'Pause']],
+  },
+  gg: {
+    id: 'gg', short: 'GG', name: 'Game Gear', full: 'Sega Game Gear', extensions: ['gg'], players: 1,
+    buttons: [[Pad.south, '1'], [Pad.east, '2'], [Pad.start, 'Start']],
+  },
   gb: {
     id: 'gb', short: 'GB', name: 'Game Boy', full: 'Game Boy', extensions: ['gb', 'sgb'], players: 1,
     buttons: NINTENDO,
@@ -54,7 +62,7 @@ export const SYSTEMS: Readonly<Record<SystemId, System>> = {
 };
 
 /** The consoles in the order the console lists them. */
-export const SYSTEM_IDS: readonly SystemId[] = ['nes', 'md', 'gb', 'gbc', 'gba', 'pico8'];
+export const SYSTEM_IDS: readonly SystemId[] = ['nes', 'md', 'sms', 'gb', 'gbc', 'gba', 'gg', 'pico8'];
 
 export const isSystem = (id: unknown): id is SystemId => typeof id === 'string' && id in SYSTEMS;
 
@@ -77,6 +85,8 @@ export function detect(name: string, rom: Uint8Array): SystemId | null {
   const ext = extension(name);
   if (ext === 'p8' || ext === 'p8.png') return 'pico8';
   if (ines(rom)) return 'nes';
+  const sega = sega8(ext, rom);
+  if (sega) return sega;
   if (megaDrive(rom)) return 'md';
   if (gbaHeader(rom)) return 'gba';
   const color = (rom[0x143] ?? 0) & 0x80 ? 'gbc' : 'gb';
@@ -95,6 +105,24 @@ function megaDrive(rom: Uint8Array): boolean {
   const at = (text: string) => [...text].every((c, i) => rom[0x100 + i] === c.charCodeAt(0));
   if (at('SEGA') || at('ESAG')) return true;
   return rom.length % 0x4000 === 512 && rom[8] === 0xaa && rom[9] === 0xbb;
+}
+
+/** The two consoles share a cartridge format. The extension selects the machine (a .gg can contain
+ * a Master System-mode game). For an unlabelled dump, use the region nibble of its TMR SEGA header. */
+function sega8(ext: string, rom: Uint8Array): 'sms' | 'gg' | null {
+  const offset = rom.length > 512 && rom.length % 0x4000 === 512 ? 512 : 0;
+  const size = rom.length - offset;
+  if (size === 0 || size > 0x400000) return null;
+  if (ext === 'sms' || ext === 'gg') return ext;
+  for (const end of [0x8000, 0x4000, 0x2000]) {
+    if (size < end) continue;
+    const at = offset + end - 16;
+    if (!Array.from('TMR SEGA').every((ch, i) => rom[at + i] === ch.charCodeAt(0))) continue;
+    const code = rom[at + 15]! >>> 4;
+    if (code === 3 || code === 4) return 'sms';
+    if (code >= 5 && code <= 7) return 'gg';
+  }
+  return null;
 }
 
 /** A GBA cartridge's header: the fixed value 0x96 at 0xb2, and a checksum over 0xa0-0xbc. */

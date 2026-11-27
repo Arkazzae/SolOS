@@ -7,6 +7,7 @@ mod gba;
 mod md;
 mod nes;
 mod pico8;
+mod sms;
 
 /// The time now, as the page gives it: seconds since 1970 in UTC, and the
 /// same in the player's time zone.
@@ -60,6 +61,8 @@ pub fn open(sys: &str, rom: &[u8]) -> Result<Box<dyn Core>, String> {
         "nes" => Box::new(nes::Nes::new(rom)?),
         "gb" | "gbc" => Box::new(gb::Gb::new(rom)?),
         "gba" => Box::new(gba::Gba::new(rom)?),
+        "sms" => Box::new(sms::Sms::new(rom, ::sms::System::MasterSystem)?),
+        "gg" => Box::new(sms::Sms::new(rom, ::sms::System::GameGear)?),
         "md" => Box::new(md::Md::new(rom)?),
         "pico8" => Box::new(pico8::Pico8::new(rom)?),
         _ => return Err(format!("no core for {sys}")),
@@ -121,6 +124,10 @@ mod tests {
     #[test]
     fn unknown_consoles_and_files_are_refused() {
         assert!(open("snes", &[0; 1024]).is_err());
+        for sys in ["sms", "gg"] {
+            // Headerless homebrew cartridges can be just a few instructions.
+            assert!(open(sys, &[]).is_err());
+        }
         for sys in ["nes", "gb", "gbc", "gba", "md", "pico8"] {
             assert!(open(sys, &[0; 16]).is_err(), "{sys} took 16 zeros for a game");
         }

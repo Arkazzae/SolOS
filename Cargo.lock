@@ -717,6 +717,7 @@ dependencies = [
  "md",
  "nes",
  "pico8",
+ "sms",
 ]
 
 [[package]]

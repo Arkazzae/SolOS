@@ -21,7 +21,7 @@
     {
       "action": "./",
       "accept": {
-        "application/octet-stream": [".nes", ".gb", ".gbc", ".sgb", ".cgb", ".gba", ".md", ".gen", ".smd", ".p8"]
+        "application/octet-stream": [".nes", ".gb", ".gbc", ".sgb", ".cgb", ".gba", ".md", ".gen", ".smd", ".sms", ".gg", ".p8"]
       }
     }
   ],

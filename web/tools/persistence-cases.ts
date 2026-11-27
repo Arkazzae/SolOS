@@ -6,6 +6,7 @@ import type { FromWorker, Saved, ToWorker } from '../src/engine/protocol.ts';
 import { Session, type SessionEvents } from '../src/engine/session.ts';
 import { Speaker } from '../src/engine/sound.ts';
 import * as store from '../src/engine/store.ts';
+import { detect } from '../src/engine/systems.ts';
 
 function check(value: unknown, why: string): asserts value {
   if (!value) throw new Error(why);
@@ -116,6 +117,52 @@ async function atomicAdd(): Promise<void> {
   check((await store.rom(id)) === undefined, 'an aborted import left orphan ROM bytes');
   check((await store.add(file)).added, 'the import could not be retried');
   await store.remove(id);
+}
+
+/** Each cartridge enables SRAM, writes its marker to the first byte and halts. */
+async function segaCartridges(): Promise<void> {
+  for (const [system, code, width, height] of [['sms', 4, 256, 192], ['gg', 6, 160, 144]] as const) {
+    const rom = new Uint8Array(0x4000);
+    rom.set([0x3e, 8, 0x32, 0xfc, 0xff, 0x3e, code, 0x32, 0, 0x80, 0x76]);
+    const ext = system.toUpperCase();
+    check(detect(`cart.${ext}`, rom) === system, 'headerless cartridge was not recognised');
+    rom.set(new TextEncoder().encode('TMR SEGA'), 0x3ff0);
+    rom[0x3fff] = code << 4;
+    const prefixed = new Uint8Array(512 + rom.length);
+    prefixed.set([0xaa, 0xbb], 8); // Also found in Mega Drive copier headers.
+    prefixed.set(rom, 512);
+    check(detect('cart.bin', prefixed) === system, 'copier-prefixed header was not recognised');
+    check(detect('cart.gg', prefixed) === 'gg', 'Game Gear cartridge selected the wrong machine');
+    const { game } = await store.add(new File([rom], `diagnostic.${ext}`));
+    check(game.system === system, 'import selected the wrong console');
+    const speaker = await Speaker.start();
+    try {
+      const first = await openSession(game, speaker);
+      try {
+        await drive(first.session, 150);
+        check(await first.session.leave(), 'the running game could not save');
+      } finally {
+        first.done();
+      }
+      check((await store.sram(game.id))?.[0] === code, 'the cartridge save was lost');
+      const saved = await store.game(game.id);
+      check(saved?.resume && saved.shot, 'Quick Resume did not keep a picture');
+      const shot = await createImageBitmap(saved.shot);
+      check(shot.width === width && shot.height === height, 'the picture has the wrong dimensions');
+      shot.close();
+      const second = await openSession(saved, speaker);
+      try {
+        check(second.session.resumed, 'the game did not resume');
+        check(await second.session.leave(), 'the resumed game could not save');
+      } finally {
+        second.done();
+      }
+    } finally {
+      speaker.close();
+      await store.remove(game.id);
+    }
+  }
+  check(detect('empty.sms', new Uint8Array()) === null, 'an empty cartridge was accepted');
 }
 
 async function openRetry(): Promise<void> {
@@ -367,6 +414,7 @@ export async function run(): Promise<{ ok: boolean; cases: { name: string; resul
     ['database open can be retried', openRetry],
     ['transaction abort rejects and allows retry', abortedWrite],
     ['game import is atomic and can be retried', atomicAdd],
+    ['Master System and Game Gear import, play and resume', segaCartridges],
     ['worker retains uncommitted SRAM', uncommittedWorkerSave],
     ['manual save retries failed cartridge persistence', manualRetry],
     ['failed exit retains the game and saves on retry', failedExit],

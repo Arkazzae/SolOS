@@ -4,8 +4,9 @@ The Sol console's own emulators on a web page, with the console's interface: Sta
 driven by a pad or the keyboard. Players add their own game files; games, saves and profiles stay in their
 browser. Two-player NES rooms relay pad input and temporary emulator snapshots. Once loaded, the page works offline and can be installed as an app.
 
-Consoles: NES (`.nes`), Mega Drive (`.md`, `.gen`, `.smd`, `.bin`), Game Boy (`.gb`, `.sgb`), Game Boy Color
-(`.gbc`, `.cgb`), Game Boy Advance (`.gba`) and PICO-8 (`.p8`, `.p8.png`). No BIOS is needed.
+Consoles: NES (`.nes`), Mega Drive (`.md`, `.gen`, `.smd`, `.bin`), Master System (`.sms`), Game Gear (`.gg`),
+Game Boy (`.gb`, `.sgb`), Game Boy Color (`.gbc`, `.cgb`), Game Boy Advance (`.gba`) and PICO-8 (`.p8`, `.p8.png`).
+No BIOS is needed.
 
 Single-player runs from any static host. For online play, use Docker Compose or the Cloudflare demo Worker.
 Both run the same Rust room logic. Players join without accounts.
@@ -119,6 +120,9 @@ time Sol is opened; a game being played is never reloaded.
 - **Saves to and from other emulators.** A game's page (Menu, or `I`) downloads its cartridge save as a `.sav`
   and takes one back.
 - **Profiles.** Each person has their own saves, Quick Resume and favourites; the games are shared.
+
+You can try Master System and Game Gear with the [two small diagnostic cartridges](../docs/sms.md#run-a-cartridge)
+built from this repository. Add both files, open one and hold Z to change the screen from red to green.
 
 ### Controls
 

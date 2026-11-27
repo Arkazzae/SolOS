@@ -72,4 +72,5 @@ cargo run --release -p pico8 --example run-pico8 -- game.p8.png 600 out.ppm
 
 MIT, see [LICENSE](LICENSE). PICO-8's font (`cores/pico8/src/font.bin`) is Lexaloffle's, released
 under CC0. The web front's font is Figtree (SIL Open Font License, `web/public/Figtree-OFL.txt`) and
-its icons are Phosphor (MIT). PICO-8 is a trademark of Lexaloffle Games; this project is not affiliated with them.
+its icons are Phosphor (MIT). The Master System and Game Gear catalogue uses data from libretro-database
+under [CC BY-SA 4.0](web/public/gamedb-LICENSE.txt). PICO-8 is a trademark of Lexaloffle Games; this project is not affiliated with them.

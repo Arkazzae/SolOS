@@ -96,7 +96,7 @@
   }
 
   function facts(game: Game): string {
-    return [SYSTEMS[game.system].name, game.tags, t.size(game.size)].filter(Boolean).join(' · ');
+    return [SYSTEMS[game.system].name, game.metadata?.year, game.tags, t.size(game.size)].filter(Boolean).join(' · ');
   }
 
   const hints = $derived<Hint[]>(

@@ -119,6 +119,10 @@ time Sol is opened; a game being played is never reloaded.
   of room; installing Sol as an app usually gets this too.
 - **Saves to and from other emulators.** A game's page (Menu, or `I`) downloads its cartridge save as a `.sav`
   and takes one back.
+- **Recognised cartridges.** Master System and Game Gear files are matched by checksum, even after a
+  rename. A recognised game shows its catalogue title in the library. Open its details to see the
+  release year, developer and player count when available. Other games keep their filename-based title.
+  Recognition works offline and also applies to cartridges already in your library.
 - **Profiles.** Each person has their own saves, Quick Resume and favourites; the games are shared.
 
 You can try Master System and Game Gear with the [two small diagnostic cartridges](../docs/sms.md#run-a-cartridge)
@@ -164,4 +168,5 @@ The design and the internals are in [docs/web.md](../docs/web.md).
 ## Licences
 
 The emulators are Sol's own (MIT). The font is Figtree (SIL Open Font License, `public/Figtree-OFL.txt`); the
-icons are Phosphor (MIT).
+icons are Phosphor (MIT). The cartridge catalogue contains data adapted from libretro-database under
+CC BY-SA 4.0. [Source and licence](public/gamedb-LICENSE.txt)

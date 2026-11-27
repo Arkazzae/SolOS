@@ -189,12 +189,24 @@ keyed `<profile>/<game>`.
 | Store | Content | When it is written |
 |---|---|---|
 | `profiles` | id (from 1, the highest plus one) and name (up to 24 characters), at most 8 | the first run, Settings › Profiles |
-| `games` | name, console, size, when added, and a PICO-8 PNG cartridge's own picture | on add |
+| `games` | filename-based name and tags, console, size, date added, Sega cartridge CRC and a PICO-8 PNG cartridge's own picture | on add, or the first read of an older Sega record |
 | `roms` | the game's file, kept apart so the library loads without it | on add |
 | `progress` | a profile's game: when played, last frame as PNG, whether a Quick Resume state or a slot exists, favourite | on play, with each snapshot, a star |
 | `saves` | the cartridge's own save (battery RAM, flash, EEPROM, PICO-8's cartdata) | every 5 s if it changed, and when the menu opens |
 | `resume` | the whole machine, for Quick Resume | every minute, when the tab is hidden, when leaving the game |
 | `slots` | the menu's save state, one per game | from the menu |
+
+For Master System and Game Gear the library looks up the CRC-32 in the selected console's local
+catalogue. It checks the full dump first, then the payload for files with a 512-byte copier prefix.
+On first read, the library computes and caches checksums for previously imported Sega ROMs one at a time.
+Later reads only need the shared game record, which keeps the filename-based title as a fallback.
+The game ID and profile keys still use the SHA-1 of the complete file, including any prefix.
+
+The web build includes 595 Master System entries and 490 Game Gear entries. The tables contain release
+titles and, where known, years, developers and player counts for the original games. To regenerate
+`web/src/data/gamedb/{sms,gg}.json` from the Sol TSV tables, run
+`python3 web/tools/import-gamedb.py PATH_TO_TABLES` from the workspace root.
+[Catalogue attribution and licence](../web/public/gamedb-LICENSE.txt)
 
 Every write is one transaction, and is taken as done only when it has committed: a request's success comes
 before the commit. A game's file and its library record go in together. A snapshot commits its changed
@@ -219,8 +231,7 @@ The console's screens, in a browser:
   games* card; the library's consoles with their pictures and epic names, and every game.
 - **Library.** Shelves: every game, favourites (once there is one), each console with games. The focused game's
   card on the left, the grid on the right with the letter bar. A card is the last frame the game's Quick Resume
-  kept, a PICO-8 cartridge's own picture, or a cover drawn in the console's hue with its name: the page has no
-  box art and asks no database.
+  kept, a PICO-8 cartridge's own picture, or a cover drawn in the console's hue with its title.
 - **A game's page** (Menu, `I`, or ≡ on a card): play, start over (asked first), favourite, the save down or up,
   remove (asked first).
 - **Settings.** Only what the page does in a browser: Picture, Pads and keyboard (pads connected, the keys in

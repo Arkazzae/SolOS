@@ -64,6 +64,13 @@
     <div class="sheet-body">
       <p class="eyebrow">{SYSTEMS[game.system].full} · {epic(game.system)}</p>
       <h2 class="h-l">{game.name}{#if game.fav}<span class="sheet-star"><Icon name="star" /></span>{/if}</h2>
+      {#if game.metadata?.year || game.metadata?.studio || game.metadata?.players}
+        <dl class="game-facts">
+          {#if game.metadata.year}<div><dt>{t.releaseYear}</dt><dd>{game.metadata.year}</dd></div>{/if}
+          {#if game.metadata.studio}<div><dt>{t.developer}</dt><dd>{game.metadata.studio}</dd></div>{/if}
+          {#if game.metadata.players}<div><dt>{t.playerCount}</dt><dd>{game.metadata.players}</dd></div>{/if}
+        </dl>
+      {/if}
       <p class="hero-meta">{[game.tags, t.size(game.size), t.addedOn(t.date(game.added))].filter(Boolean).join(' · ')}</p>
       <p class="lib-played">{game.played ? t.playedAgo(t.ago(daysAgo(game.played))) : t.notPlayed}</p>
       <div class="group">

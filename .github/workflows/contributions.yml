@@ -1,0 +1,46 @@
+name: Contribution checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  commits:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check commit messages and the pull request title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -eu
+          message="$RUNNER_TEMP/contribution-message"
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            printf '%s\n' "$PR_TITLE" > "$message"
+            .githooks/commit-msg "$message" title
+          fi
+
+          # On branch creation there is no previous tip to compare against.
+          if [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            printf '%s\n' "$HEAD" > "$RUNNER_TEMP/commits"
+          else
+            git rev-list "$BASE..$HEAD" > "$RUNNER_TEMP/commits"
+          fi
+          while IFS= read -r commit; do
+            git show --no-patch --format=%B "$commit" > "$message"
+            echo "Checking $commit"
+            .githooks/commit-msg "$message" "$commit"
+          done < "$RUNNER_TEMP/commits"

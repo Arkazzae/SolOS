@@ -23,5 +23,10 @@
 		Referrer-Policy no-referrer
 		-Server
 	}
+	@rooms path */netplay
+	handle @rooms {
+		rewrite * /netplay
+		reverse_proxy rooms:8788
+	}
 	file_server
 }

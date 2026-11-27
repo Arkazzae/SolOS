@@ -13,9 +13,12 @@
   import { t } from '../../lib/text.svelte.ts';
   import { buttonKeys, commonGameKeys } from '../keys.ts';
   import { layer } from '../layers.ts';
+  import { focusFirst } from '../nav.ts';
   import type { Action } from '../nav.ts';
   import Hints from '../parts/Hints.svelte';
+  import InviteLink from '../parts/InviteLink.svelte';
   import Icon from '../parts/Icon.svelte';
+  import { online, roomStatus } from '../state/online.svelte.ts';
   import { endGame, opened, sound } from '../state/play.svelte.ts';
   import { toast } from '../state/notify.svelte.ts';
   import { prefs, setPrefs } from '../state/prefs.svelte.ts';
@@ -43,7 +46,8 @@
   let root: HTMLElement | undefined = $state();
   let canvas: HTMLCanvasElement | undefined = $state();
   let menuEl: HTMLElement | undefined = $state();
-  let session: Session | null = null;
+  let session = $state.raw<Session | null>(null);
+  let overlay = $state<HTMLElement>();
   let speaker: Speaker | null = null;
   let status = $state<Status>({ failed: null, fast: 0, silent: false, slot: false, stats: null });
   let menu = $state(false);
@@ -62,6 +66,7 @@
       toast(t.saveFailed, 'warn', undefined, 'danger');
     },
     failed: (error) => {
+      online.room?.close();
       toast(t.failed(error), 'warn', undefined, 'danger');
       openMenu();
     },
@@ -76,7 +81,7 @@
     let gone = false;
     let started: Session | null = null;
     untrack(() => {
-      const options = { shader: prefs.shader, quickResume: prefs.quickResume };
+      const options = { shader: prefs.shader, quickResume: prefs.quickResume, room: online.room, hostProgress: online.hostProgress };
       void (async () => {
         try {
           speaker = await sound();
@@ -85,7 +90,6 @@
           session = started;
           session.stats = stats;
           if (session.resumed) toast(t.resumed, 'play');
-          giveTo(play);
           opened();
         } catch (error) {
           // A game left while it was starting has nothing more to say.
@@ -101,6 +105,21 @@
       started?.stop();
     };
   });
+
+  // While waiting, the same keyboard and pad that drive the library navigate
+  // the room actions. Only a running game owns gameplay input.
+  $effect(() => {
+    if (!session) return;
+    const running = !menu && (!online.room || online.room.phase === 'playing');
+    input.keyboard = running;
+    giveTo(running ? play : null);
+    if (!menu && overlay) focusFirst(overlay);
+  });
+
+  function roomAction(action: Action): boolean {
+    if (action === 'b') { void leave(); return true; }
+    return false;
+  }
 
   // Moving the mouse brings the bar back; it fades when the mouse rests.
   $effect(() => {
@@ -119,7 +138,7 @@
     giveTo(null);
     session.pause();
     await tick();
-    row(status.failed ? 'restart' : 'back')?.focus();
+    row(status.failed ? (online.room ? 'exit' : 'restart') : 'back')?.focus();
   }
 
   function closeMenu(): void {
@@ -127,7 +146,6 @@
     menu = false;
     (document.activeElement as HTMLElement | null)?.blur();
     session.resume();
-    giveTo(play);
   }
 
   async function leave(): Promise<void> {
@@ -238,7 +256,7 @@
    * key the menu took (Esc closing it) is not the game's too. */
   function onkeydown(event: KeyboardEvent): void {
     speaker?.resume();
-    if (menu || !session || event.defaultPrevented) return;
+    if (menu || overlay || !session || event.defaultPrevented) return;
     if (event.code === 'Escape') {
       event.preventDefault();
       void openMenu();
@@ -271,6 +289,8 @@
     }
   });
 
+  const onlineHidden: Act[] = ['save', 'load', 'restart', 'speed'];
+  const rows = $derived(online.room ? ROWS.filter(row => !onlineHidden.includes(row.act)) : ROWS);
   const disabled = (act: Act) => (act === 'load' && !status.slot) || (!!status.failed && (act === 'back' || act === 'save' || act === 'load'));
 
   const statsLine = $derived.by(() => {
@@ -288,6 +308,17 @@
 <section class="player" class:idle={idle && !menu} class:is-menu={menu} role="application" aria-label={game.name}
   bind:this={root} use:layer={handle} onpointermove={() => (idle = false)}>
   <canvas class="screen" bind:this={canvas}></canvas>
+  {#if online.room && online.room.phase !== 'playing' && !menu}
+    <div class="room-overlay" role="dialog" aria-modal="true" aria-label={t.onlinePlay} bind:this={overlay} use:layer={roomAction}><b role="status">{roomStatus(online.room)}</b>
+      {#if online.room.code}<span>{t.roomCode} · {online.room.code} · P{online.room.seat + 1}</span>{/if}
+      {#if online.room.phase === 'waiting' && online.room.seat === 0}<InviteLink code={online.room.code} />{/if}
+      <button class="btn" data-nav onclick={leave}>{t.exit}</button>
+    </div>
+  {/if}
+  {#if online.room?.phase === 'playing' && !menu}
+    {@const note = online.room.localSlow ? t.roomLocalSlow : online.room.peerSlow ? t.roomPeerSlow : online.room.networkWait ? t.roomNetworkWait : ''}
+    {#if note}<div class="room-health" role="status">{note}</div>{/if}
+  {/if}
   <header class="bar">
     <button class="round" title={t.exit} aria-label={t.exit} onclick={leave}><Icon name="close" /></button>
     <div class="bar-title"><b>{game.name}</b><span>{system.short}</span></div>
@@ -312,7 +343,7 @@
         <p class="eyebrow">{system.full}</p>
         <h2 class="h-l ig-title">{game.name}</h2>
         <div class="ig-list">
-          {#each ROWS as { act, icon, gap } (act)}
+          {#each rows as { act, icon, gap } (act)}
             <button class="ig-row" class:ig-gap={gap} data-act={act} disabled={disabled(act)}
               onfocus={() => (focusedAct = act)} onclick={() => choose(act)}>
               <span class="ig-ic"><Icon name={icon} /></span><span class="ig-k">{label(act)}</span>
@@ -340,3 +371,9 @@
     </div>
   {/if}
 </section>
+
+<style>
+  .room-health { position: absolute; left: 50%; bottom: 6%; transform: translateX(-50%); background: #111e; color: white; padding: .65em 1em; text-align: center; pointer-events: none; }
+  .room-overlay { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center;
+    justify-items: center; gap: 1.6rem; padding: 2rem; background: #111d; color: white; text-align: center; }
+</style>

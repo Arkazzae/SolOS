@@ -1,0 +1,13 @@
+[package]
+name = "sol-rooms"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[dependencies]
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio", "ws"] }
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "sync", "time"] }
+sol-netplay = { path = "../../shared/netplay" }
+serde_json = "1"
+getrandom = "0.3"
+sol-relay = { path = "../relay" }

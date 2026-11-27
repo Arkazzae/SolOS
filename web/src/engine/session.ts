@@ -17,6 +17,7 @@ import { Pad } from './core.ts';
 import type { Input, Poll } from './input.ts';
 import { Pace } from './pace.ts';
 import type { Opened, Saved } from './protocol.ts';
+import type { Room } from './room.svelte.ts';
 import { Remote } from './remote.ts';
 import type { ShaderMode } from './shaders.ts';
 import type { Speaker } from './sound.ts';
@@ -74,6 +75,8 @@ export interface SessionOptions {
   shader: ShaderMode;
   /** Whether the game goes on from where it was left, and is kept so when left. */
   quickResume: boolean;
+  room?: Room | null;
+  hostProgress?: boolean;
 }
 
 type Target = 'sram' | 'resume' | 'slot';
@@ -85,6 +88,7 @@ export class Session {
   private readonly input: Input;
   private readonly events: SessionEvents;
   private readonly quickResume: boolean;
+  private readonly room: Room | null;
   private readonly cleanup: (() => void)[] = [];
   private pace = new Pace(60);
 
@@ -113,6 +117,7 @@ export class Session {
     this.speaker = speaker;
     this.input = input;
     this.events = events;
+    this.room = options.room ?? null;
     this.quickResume = options.quickResume;
     this.status = { ...this.status, slot: game.slot };
     this.remote = new Remote({
@@ -131,7 +136,13 @@ export class Session {
     });
     resizer.observe(canvas);
     const hidden = () => {
-      if (document.visibilityState === 'hidden') void this.keep(true);
+      if (this.room) {
+        this.room.setReady(!document.hidden && !this.paused);
+        this.last = 0;
+        this.pace.reset();
+      } else if (document.hidden) {
+        void this.keep(true);
+      }
     };
     document.addEventListener('visibilitychange', hidden);
     this.cleanup.push(() => resizer.disconnect(), () => document.removeEventListener('visibilitychange', hidden));
@@ -149,10 +160,11 @@ export class Session {
   ): Promise<Session> {
     const session = new Session(canvas, game, speaker, input, options, events);
     try {
+      const localProgress = !session.room || (session.room.seat === 0 && options.hostProgress);
       const [rom, sram, state] = await Promise.all([
         store.rom(game.id),
-        store.sram(game.id),
-        options.quickResume ? store.resumeState(game.id) : undefined,
+        localProgress ? store.sram(game.id) : undefined,
+        localProgress && options.quickResume ? store.resumeState(game.id) : undefined,
       ]);
       if (!rom) throw new Error('the file is gone');
       const opened = await session.remote.call<Opened>({ kind: 'open', system: game.system, rom, sram: sram ?? null, state: state ?? null });
@@ -160,7 +172,22 @@ export class Session {
       session.pace = new Pace(opened.frameHz);
       session.resumed = opened.resumed;
       session.game = { ...game, played: Date.now() };
-      void store.saveGame(session.game).catch((error: unknown) => events.saveFailed(error));
+      session.room?.attach({
+        reset: frame => {
+          session.remote.post({ kind: 'net-reset', frame });
+          session.pace.reset();
+          session.last = 0;
+          session.maskNext = true;
+          speaker.flush();
+        },
+        snapshot: (frame, rewind) => session.remote.call<Uint8Array<ArrayBuffer>>({ kind: 'snapshot', frame, rewind }),
+        restore: async state => {
+          await session.remote.call({ kind: 'load', state });
+          speaker.flush();
+        },
+      }, game.id);
+      if (document.hidden) session.room?.setReady(false);
+      if (!session.room) void store.saveGame(session.game).catch((error: unknown) => events.saveFailed(error));
     } catch (error) {
       session.stop();
       throw error;
@@ -170,8 +197,8 @@ export class Session {
       const timer = window.setInterval(f, ms);
       session.cleanup.push(() => clearInterval(timer));
     };
-    every(SRAM_EVERY, () => void session.keep(false));
-    if (session.quickResume) every(RESUME_EVERY, () => void session.keep(true));
+    if (!session.room) every(SRAM_EVERY, () => void session.keep(false));
+    if (!session.room && session.quickResume) every(RESUME_EVERY, () => void session.keep(true));
     input.keyboard = true;
     return session;
   }
@@ -192,12 +219,24 @@ export class Session {
     }
     this.masked &= held;
     const pads = poll.pads.map((bits) => bits & ~this.masked);
-    const fast = poll.fast ? NO_LIMIT : this.menuFast;
+    const fast = this.room ? 0 : poll.fast ? NO_LIMIT : this.menuFast;
     this.update({ fast, silent: !this.speaker.running });
     if (!this.status.failed) {
       const times = SPEEDS[fast]!;
-      const frames = this.pace.frames(dt, times);
-      if (frames > 0 && !this.busy) {
+      const frames = this.pace.frames(dt, times, !!this.room);
+      if (this.room) {
+        this.room.monitor(performance.now());
+        if (this.room.phase === 'playing') {
+          const step = this.busy ? null : this.room.step(pads[0] ?? 0, frames);
+          this.pace.defer(frames - (step?.fresh ?? 0));
+          if (step) {
+            this.busy = true;
+            this.runStart = performance.now();
+            this.remote.post({ kind: 'net-frames', ...step });
+            this.room.check(step.stable);
+          }
+        }
+      } else if (frames > 0 && !this.busy) {
         this.busy = true;
         this.runStart = performance.now();
         const budget = fast > 0 ? (FAST_BUDGET * 1000) / (this.pace.refresh || 60) : 0;
@@ -214,6 +253,7 @@ export class Session {
   pause(): void {
     if (this.paused || this.closed) return;
     this.paused = true;
+    this.room?.setReady(false);
     this.input.keyboard = false;
     this.update({ fast: 0 });
     void this.keep(false);
@@ -223,6 +263,7 @@ export class Session {
   resume(): void {
     if (!this.paused || this.closed || this.status.failed) return;
     this.paused = false;
+    this.room?.setReady(!document.hidden);
     this.maskNext = true;
     this.input.keyboard = true;
     this.last = 0;
@@ -255,6 +296,7 @@ export class Session {
 
   /** Goes back to the moment in the slot; false when there is none. */
   async loadSlot(): Promise<boolean> {
+    if (this.room) return false;
     const state = await store.slot(this.game.id);
     if (!state) return false;
     await this.remote.call({ kind: 'load', state });
@@ -264,6 +306,7 @@ export class Session {
 
   /** Turns the console off and on, the cartridge's save kept; after a fault too. */
   async restart(): Promise<void> {
+    if (this.room) return;
     await this.remote.call({ kind: 'reset' });
     this.update({ failed: null });
     this.speaker.flush();
@@ -281,6 +324,7 @@ export class Session {
   stop(): void {
     if (this.closed) return;
     this.closed = true;
+    this.room?.close();
     this.input.keyboard = false;
     for (const off of this.cleanup) off();
     this.remote.terminate();
@@ -291,7 +335,9 @@ export class Session {
     this.busy = false;
     this.counted.ran += frames;
     this.counted.runs++;
-    this.counted.work += performance.now() - this.runStart;
+    const elapsed = performance.now() - this.runStart;
+    this.counted.work += elapsed;
+    this.room?.workload(frames, elapsed);
   }
 
   private fault(error: string): void {
@@ -332,13 +378,14 @@ export class Session {
 
   /** Keeps the cartridge's save if it changed, and with whole the machine and a picture for the card. */
   private keep(whole: boolean): Promise<boolean> {
+    if (this.room) return Promise.resolve(true);
     return this.save(whole && this.quickResume ? 'resume' : 'sram');
   }
 
   /** Every save goes through one queue; only a committed transaction is acknowledged to the worker, so
    * a failed one is retried with the same bytes. */
   private save(target: Target): Promise<boolean> {
-    if (this.closed || this.status.failed) return Promise.resolve(false);
+    if (this.room || this.closed || this.status.failed) return Promise.resolve(false);
     this.saving = this.saving.then(async () => {
       if (this.closed || this.status.failed) return false;
       try {

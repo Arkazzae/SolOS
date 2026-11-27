@@ -33,16 +33,16 @@ export class Pace {
   }
 
   /** The frames due after a refresh dt ms after the last, `times` as many to fast forward. */
-  frames(dt: number, times: number): number {
+  frames(dt: number, times: number, realtime = false): number {
     this.measure(dt);
-    if (this.locked) {
+    if (this.locked && !realtime) {
       this.speed = this.refresh / this.frameHz;
       this.due += (dt > 0 ? Math.min(3, Math.max(1, Math.round((dt * this.refresh) / 1000))) : 1) * times;
     } else {
       this.speed = 1;
       this.due += ((dt * this.frameHz) / 1000) * times;
     }
-    if (this.due > 4 * times) this.due = times;
+    if (this.due > 4 * times) this.due = realtime ? 4 : times;
     const frames = Math.floor(this.due);
     this.due -= frames;
     return frames;

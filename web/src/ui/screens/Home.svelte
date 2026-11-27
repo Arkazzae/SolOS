@@ -16,6 +16,7 @@
   import { consolesWithGames, currentProfile, daysAgo, library, pickGames, profileName, shelfGames } from '../state/library.svelte.ts';
   import { startGame, startOver } from '../state/play.svelte.ts';
   import { prefs } from '../state/prefs.svelte.ts';
+  import { online } from '../state/online.svelte.ts';
   import { openShelf, view } from '../state/view.svelte.ts';
 
   let { tab }: { tab: (action: Action) => boolean } = $props();
@@ -76,6 +77,7 @@
       <p class="lead">{t.welcomeLead}</p>
     {/if}
     <Hints {hints} column />
+    <button class="btn" data-nav onclick={() => (online.open = true)}>{t.joinRoom}</button>
   </div>
 
   {#if library.games.length}

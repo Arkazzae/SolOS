@@ -1,0 +1,15 @@
+{
+  "name": "sol-web-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:room": "cargo build --locked --release --target wasm32-unknown-unknown -p sol-relay --features edge && wasm-bindgen --target web --out-dir generated ../../target/wasm32-unknown-unknown/release/sol_relay.wasm",
+    "dev": "wrangler dev",
+    "types": "wrangler types --include-runtime=false && tsc --noEmit"
+  },
+  "devDependencies": {
+    "wrangler": "4.168.0",
+    "@cloudflare/workers-types": "5.20261127.1",
+    "typescript": "6.0.3"
+  }
+}

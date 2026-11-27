@@ -2,8 +2,8 @@
 
 The console's own emulators on a web page. The Rust cores from `cores/` are compiled to WebAssembly and run in
 the browser, behind the console's own interface (Start, the Library, Settings, the game menu) rebuilt for a
-browser in Svelte. The player adds their own game files. Games, saves and profiles stay in the browser and
-nothing is uploaded. It installs as an app, works offline, and is meant for people to host themselves
+browser in Svelte. The player adds their own game files. The library and personal saves live in the browser. Single-player works offline.
+Two-player NES rooms exchange controller input and temporary machine states through a Rust relay. The app is self-hostable
 ([web/README.md](../web/README.md)).
 
 Status (2026-11-23): NES, Mega Drive, Game Boy, Game Boy Color, Game Boy Advance and PICO-8. Test ROMs for each of
@@ -29,7 +29,7 @@ pnpm check        # the wasm build against the native one, frame by frame (below
 pnpm test         # the browser tests in a fresh headless Chromium or Chrome profile
 ```
 
-The page needs no special headers and no server code: it does not use SharedArrayBuffer, so it does not need
+The single-player page needs only a static host: it does not use SharedArrayBuffer, so it does not need
 COOP or COEP. It needs a secure page (https, or localhost): `crypto.subtle` (a game's SHA-1), the AudioWorklet
 and the service worker exist only there, and the page says so instead of starting elsewhere. The font, icons
 and everything else come with the page. A build is about 800 KB over the wire: the WebAssembly module with its
@@ -256,6 +256,76 @@ pnpm on Node 24, and serves `dist/` with Caddy (`web/Caddyfile`: a year's cachin
 `web/compose.yaml` runs it on port 8080. The image serves the page with `no-cache`, and the module as
 `application/wasm`, compressed and cached for a year; the module it builds is byte for byte the one a build
 outside Docker makes.
+
+## NES multiplayer
+
+A room belongs to the installation that created it. The invite link includes the installation's base
+path and a six-character code. Both players import their own copy of the game. The room checks the
+protocol version and the SHA-256 of each browser's emulator module. The guest finds the ROM by its
+library SHA-1, so renaming the file is fine. Both players mark themselves ready after opening the
+matching ROM. The host can seed the session from their local progress. During the game all snapshots
+stay in memory and neither profile's battery save, slot or Quick Resume is written.
+
+- `shared/netplay` defines the wire messages, the server's queue for incomplete frames and the client's
+  frame counter and input queues in Rust. The web page instantiates its small WASM module once per room.
+  The native types are also available as a Rust library.
+- `netplay/server` builds `sol-rooms`. One process holds active rooms and seats in memory. Clients
+  connect to `netplay` under the application's base URL. Compose routes that WebSocket through Caddy.
+  A connecting guest or returning player also puts the public code in the socket URL so a service
+  can route the upgrade to the correct room. The private resume token stays in the first message.
+- `netplay/relay` runs the same Rust synchronization state machine on both servers. For the
+  Cloudflare demo, `web/cloud` binds a separate Durable Object to each room code and serves the
+  browser assets on the same origin. The object accepts hibernatable sockets and keeps seat
+  credentials, disconnect deadlines, readiness and the current epoch in its private SQLite-backed
+  storage. Frame inputs and emulator snapshots stay transient. When an active game wakes, the
+  host seeds a new epoch. The room releases its record on exit or expiration.
+  [Cloudflare WebSockets](https://developers.cloudflare.com/durable-objects/best-practices/websockets/)
+- Each player submits their NES buttons for numbered frames. The server broadcasts a pair once both
+  slots are filled. Each browser queues a few inputs ahead based on observed delay and runs its worker
+  with a separate pair per emulated frame. The controller byte goes from A in bit 0 to Right in bit 7.
+  The renderer, display refresh and audio device stay local.
+- At startup the host sends one machine snapshot. The guest acknowledges loading it before either side
+  advances. Each client hashes a fresh machine snapshot every 300 frames. A mismatch, a return from the
+  game menu or reconnect starts a new synchronization round. The server discards late inputs from older
+  rounds. Each player can reclaim their seat for about a minute after a socket drop while the tab is open.
+  Leaving explicitly, or restarting the room server, closes the room.
+
+Run the browser-to-browser check against a running deployment with `pnpm test:rooms` in `web/`.
+It uses two fresh Chromium profiles, two display rates and a generated two-controller NES cartridge.
+`SOL_TEST_URL` selects the installation (default `http://localhost:8080/`).
+
+### Planned board clients
+
+The earlier `sol-os` tree has three Buildroot targets. The Zero 2 W uses 32-bit ARMv7 userspace.
+The Pi 5 and TrimUI Smart Pro image configurations target AArch64. Each image already includes
+`solui` (the native menu), `solhost` (the game process) and `sold` (system services including Wi-Fi).
+Build the client into the board image. The room server can run on any reachable self-hosted installation.
+For a board-to-board game on the same LAN, “Host on this console” could start the native Rust room
+server on demand. The other board would join by local address and room code. Ship the small server
+binary for the board's Buildroot target so this mode also works on the 32-bit Zero 2 W. Stop it when
+the host closes the room. Keep room creation and invitations independent of the console owner's
+cloud-save credentials. The earlier `sol-cloud` Worker stores private saves and backups in R2.
+
+In `solui`, the game's page would open the room and the existing on-screen keyboard would take a join
+code. At launch, hand the room and assigned seat to `solhost`. Its loop in `host/src/main.rs` already
+maps the built-in controls or external pads and calls `core.run_frame_players`. Give each emulated
+frame its own number at that call. The current outer loop counts display refreshes and can run zero or
+several emulated frames per refresh.
+
+Encode each player's input as the emulated console's buttons. For example, bit zero means Left in
+the board's `solui::input::Action` and the bottom face button in the web ABI. Both sides can map to
+the same NES buttons before sending them. Use room seats to configure the emulated controller ports
+so a guest's local first pad can drive P2. For NES, both builds should pin the same core revision
+and state format. Native compatibility needs a tested cross-build identifier in place of the web-only
+module digest. Use an in-memory guest save so suspend and exit cannot overwrite the guest's
+Quick Resume on the SD card.
+
+First exercise an invite and a reconnect between two browsers on a local Compose server with the
+internet disconnected. Then pair a browser with a Zero 2 W on the same installation. Join by code,
+exercise both pads over Wi-Fi with a Bluetooth pad on the Pi, reconnect and compare the serialized
+NES states at the same frame. For a board-hosted LAN test, let the Pi 5 host and join from the
+TrimUI with the internet disconnected and the Compose server stopped. Suspend the handheld during
+play and reclaim the same seat on wake.
 
 ## Not yet
 

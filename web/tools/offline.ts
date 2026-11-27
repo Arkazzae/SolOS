@@ -22,7 +22,9 @@ const WORKER = (build: string, list: string[]) => `// Sol's service worker, made
 const CACHE = 'sol-${build}';
 const FILES = ${JSON.stringify(list)};
 const scope = self.registration.scope;
-const url = (file) => new URL(file, scope).href;
+// Static hosts can redirect index.html to the app root. Cache the canonical
+// document directly so its response can also satisfy an offline navigation.
+const url = (file) => new URL(file === 'index.html' ? './' : file, scope).href;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(FILES.map(url))));

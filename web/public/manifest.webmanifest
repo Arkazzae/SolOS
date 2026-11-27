@@ -1,7 +1,7 @@
 {
   "name": "Sol",
   "short_name": "Sol",
-  "description": "Games on the Sol console's own emulators, in your browser. Your games and saves never leave it.",
+  "description": "Play your own games on Sol’s emulators in the browser, solo or with a friend in a two-player NES room.",
   "id": "./",
   "start_url": "./",
   "scope": "./",

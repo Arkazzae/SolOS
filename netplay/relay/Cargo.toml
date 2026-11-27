@@ -1,0 +1,16 @@
+[package]
+name = "sol-relay"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[features]
+edge = ["dep:serde_json", "dep:wasm-bindgen"]
+
+[dependencies]
+sol-netplay = { path = "../../shared/netplay" }
+serde_json = { version = "1", optional = true }
+wasm-bindgen = { version = "=0.2.127", optional = true }

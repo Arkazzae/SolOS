@@ -8,3 +8,4 @@ cores/*/tests/roms/*/
 cores/*/tests/singlestep
 shared/*/tests/singlestep
 docs
+web/cloud

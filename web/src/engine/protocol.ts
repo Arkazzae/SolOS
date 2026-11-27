@@ -3,12 +3,25 @@
 import type { ShaderMode } from './shaders.ts';
 
 /** What the page asks; a request with an id gets a reply with the same id. */
+export interface NetStep {
+  /** First frame to run. A correction can start behind the current head. */
+  start: number;
+  rewind: boolean;
+  pads: [number, number][];
+  /** All frames below this point now have authoritative inputs. */
+  stable: number;
+  fresh: number;
+}
+
 export type ToWorker =
   | { kind: 'init'; canvas: OffscreenCanvas; sound: MessagePort; shader: ShaderMode }
   | { kind: 'open'; id: number; system: string; rom: Uint8Array; sram: Uint8Array | null; state: Uint8Array | null }
   /** Frames to run. With a budget (ms, fast forward), a frame after the first runs only while one as
    * long as the last still ends within it, and only the last frame's sound is sent. */
   | { kind: 'run'; frames: number; pads: number[]; speed: number; budget: number }
+  | ({ kind: 'net-frames' } & NetStep)
+  | { kind: 'net-reset'; frame: number }
+  | { kind: 'snapshot'; id: number; frame: number; rewind: boolean }
   | { kind: 'resize'; width: number; height: number }
   | { kind: 'shader'; shader: ShaderMode }
   | { kind: 'save'; id: number; state: boolean; shot: boolean }

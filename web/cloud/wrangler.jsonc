@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "sol-web-demo",
+  "main": "worker.ts",
+  "compatibility_date": "2026-11-27",
+  "assets": { "directory": "../dist", "binding": "ASSETS", "run_worker_first": ["/netplay"] },
+  "build": { "command": "pnpm build:room" },
+  "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "SolRoom" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SolRoom"] }]
+}

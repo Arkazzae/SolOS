@@ -5,7 +5,7 @@
 
 import wasmUrl from '../../../target/wasm32-unknown-unknown/release/solweb.wasm?url';
 import { Machine } from './core.ts';
-import type { FromWorker, Opened, Request, Saved, SoundChunk, ToWorker } from './protocol.ts';
+import type { FromWorker, NetStep, Opened, Request, Saved, SoundChunk, ToWorker } from './protocol.ts';
 import { Screen } from './render.ts';
 
 const scope = self as unknown as {
@@ -83,6 +83,47 @@ function run(frames: number, pads: number[], speed: number, budget: number): num
   return ran;
 }
 
+// At most six speculative frames. Audio is released exactly once, after confirmation.
+let netFrame = 0;
+const predictions = new Map<number, { before: Uint8Array<ArrayBuffer>; audio: Int16Array<ArrayBuffer> }>();
+
+function rewindNet(m: Machine, frame: number): void {
+  if (frame === netFrame) return;
+  const saved = predictions.get(frame);
+  if (!saved) throw new Error('rollback history unavailable');
+  m.loadState(saved.before);
+  for (const key of predictions.keys()) if (key >= frame) predictions.delete(key);
+  netFrame = frame;
+}
+
+function runNet(step: NetStep): void {
+  const m = machine;
+  if (!m) throw new Error('room has no emulator');
+  if (step.rewind) rewindNet(m, step.start);
+  if (step.start !== netFrame) throw new Error('out of sequence netplay frame');
+  const output: Int16Array[] = [];
+  for (const [frame, pending] of predictions) {
+    if (frame >= step.stable) break;
+    output.push(pending.audio);
+    predictions.delete(frame);
+  }
+  for (const pads of step.pads) {
+    const before = netFrame >= step.stable ? m.saveState() : null;
+    m.runFrame(pads);
+    const audio = m.audio().slice();
+    if (before) predictions.set(netFrame, { before, audio });
+    else output.push(audio);
+    netFrame++;
+  }
+  if (step.pads.length || step.rewind) draw(m);
+  if (sound && output.length) {
+    const chunk = new Int16Array(output.reduce((sum, audio) => sum + audio.length, 0));
+    let offset = 0;
+    for (const audio of output) { chunk.set(audio, offset); offset += audio.length; }
+    sound.postMessage({ samples: chunk, stereo: m.stereo, rate: m.sampleHz } satisfies SoundChunk, [chunk.buffer]);
+  }
+}
+
 /** The last frame as a PNG at the console's own size, for the library's card. */
 async function shot(m: Machine): Promise<Blob> {
   const canvas = new OffscreenCanvas(m.width, m.height);
@@ -112,6 +153,13 @@ async function request(message: Request): Promise<unknown> {
       if (resumed) draw(m);
       return { frameHz: m.frameHz, resumed } satisfies Opened;
     }
+    case 'snapshot':
+      if (!machine) throw new Error('game closed');
+      if (message.rewind) rewindNet(machine, message.frame);
+      if (netFrame === message.frame) return machine.saveState();
+      const state = predictions.get(message.frame);
+      if (!state) throw new Error('confirmed snapshot unavailable');
+      return state.before;
     case 'save': {
       const m = machine;
       if (!m) return { sram: null, state: null, shot: null } satisfies Saved;
@@ -163,6 +211,14 @@ scope.onmessage = ({ data: message }) => {
           return;
         case 'sram-kept':
           keptSram = message.sram;
+          return;
+        case 'net-reset':
+          predictions.clear();
+          netFrame = message.frame;
+          return;
+        case 'net-frames':
+          runNet(message);
+          scope.postMessage({ kind: 'ran', frames: message.fresh });
           return;
         case 'run':
           scope.postMessage({ kind: 'ran', frames: run(message.frames, message.pads, message.speed, message.budget) });

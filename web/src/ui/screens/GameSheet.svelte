@@ -11,6 +11,7 @@
   import Hints from '../parts/Hints.svelte';
   import Icon from '../parts/Icon.svelte';
   import { daysAgo, downloadSave, gameById, removeGame, toggleFav, uploadSave } from '../state/library.svelte.ts';
+  import { hostRoom } from '../state/online.svelte.ts';
   import { startGame, startOver } from '../state/play.svelte.ts';
   import { prefs } from '../state/prefs.svelte.ts';
   import { view } from '../state/view.svelte.ts';
@@ -43,6 +44,10 @@
     const resume = game.resume && prefs.quickResume;
     return [
       { key: 'play', icon: 'play', label: resume ? t.resume : t.play, run: () => void startGame(id) },
+      ...(game.system === 'nes' ? [{ key: 'online', icon: 'pad', label: t.onlinePlay, run: () => {
+        if (game) hostRoom(game);
+        view.sheet = null;
+      } } satisfies Act] : []),
       ...(resume ? [{ key: 'over', icon: 'restart', label: t.startOver, line: t.startOverLine, run: () => void startOver(id) } satisfies Act] : []),
       { key: 'fav', icon: game.fav ? 'star' : 'starLine', label: t.favourite, line: t.favouritesLine, run: () => void toggleFav(id) },
       { key: 'down', icon: 'download', label: t.downloadSave, line: t.downloadSaveLine, run: () => void downloadSave(id) },

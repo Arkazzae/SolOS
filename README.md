@@ -35,8 +35,9 @@ little to spare for the host yet.
 the NES, Mega Drive, Game Boy, Game Boy Color, Game Boy Advance and PICO-8 cores compiled to
 WebAssembly (`web/core`). Players add their own game files; games, saves and profiles stay in their
 browser. It installs as an app, works offline, and is a static page anyone can host (a Docker image
-with Caddy is included). The WebAssembly build matches the native one bit for bit on the test ROMs
-it was checked with. How to run and host it: [web/README.md](web/README.md); how it works:
+with Caddy is included). For two-player NES games, invite a second player by link or code. Each browser
+runs its own game. Rooms use the same Rust synchronization logic in Compose and the Cloudflare demo
+Worker. The WebAssembly build matches the native one bit for bit on the test ROMs it was checked with. How to run and host it: [web/README.md](web/README.md); how it works:
 [docs/web.md](docs/web.md).
 
 ## Building

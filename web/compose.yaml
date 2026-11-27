@@ -1,6 +1,12 @@
 # Sol in a browser on your own server: `docker compose up -d` here, then open http://localhost:8080.
 # For another device, Sol needs HTTPS: set SOL_ADDRESS (see Caddyfile) and publish 443 as well.
 services:
+  rooms:
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+      target: rooms
+    restart: unless-stopped
   sol:
     build:
       context: ..

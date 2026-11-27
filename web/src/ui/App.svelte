@@ -15,6 +15,8 @@
   import GameSheet from './screens/GameSheet.svelte';
   import Home from './screens/Home.svelte';
   import Library from './screens/Library.svelte';
+  import { online } from './state/online.svelte.ts';
+  import RoomLobby from './screens/RoomLobby.svelte';
   import Player from './screens/Player.svelte';
   import Settings from './screens/Settings.svelte';
   import Setup from './screens/Setup.svelte';
@@ -135,7 +137,7 @@
 {#if !isSecureContext}
   <div class="insecure"><span class="ic ic-lg tone-accent"><Icon name="warn" /></span><p class="h-m">{t.secureOnly}</p></div>
 {:else if library.ready}
-  <div class="sect" inert={!!play.game || notices.dialog !== null || view.sheet !== null} style:--hue={view.hue || HUE_NONE}>
+  <div class="sect" inert={!!play.game || notices.dialog !== null || view.sheet !== null || (online.open && !view.setup)} style:--hue={view.hue || HUE_NONE}>
     <div class="menu-background" class:moving={prefs.animateWallpaper} aria-hidden="true">
       {#if prefs.wallpaper === 'wave'}
         <svg class="wave" viewBox="0 0 1920 1080" preserveAspectRatio="none">
@@ -169,6 +171,7 @@
     {/if}
   </div>
   {#if view.sheet && !play.game}<GameSheet />{/if}
+  {#if online.open && !view.setup && !play.game}<RoomLobby />{/if}
   {#if play.game}
     {#key play.game.id}<Player game={play.game} />{/key}
   {/if}

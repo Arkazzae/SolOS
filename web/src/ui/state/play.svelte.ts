@@ -8,6 +8,7 @@ import { focus, focusFirst } from '../nav.ts';
 import { topLayer } from '../layers.ts';
 import { gameById, refresh } from './library.svelte.ts';
 import { ask, toast } from './notify.svelte.ts';
+import { closeRoom, online } from './online.svelte.ts';
 import { view } from './view.svelte.ts';
 
 export const play = $state({
@@ -59,6 +60,7 @@ export function opened(): void {
 /** The game ended (left, or never started): the library comes back, its card in focus. */
 export async function endGame(): Promise<void> {
   const id = play.game?.id;
+  if (online.room) closeRoom();
   play.game = null;
   play.opening = false;
   await refresh();

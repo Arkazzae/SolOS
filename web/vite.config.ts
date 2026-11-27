@@ -16,12 +16,22 @@ try {
   // A build without git (a Docker build context): the version alone.
 }
 
+const base = (process.env.SOL_BASE || '/').replace(/\/?$/, '/');
+const proxy = {
+  [base + 'netplay']: {
+    target: process.env.SOL_ROOMS_ORIGIN ?? 'http://127.0.0.1:8788',
+    ws: true,
+    rewrite: (path: string) => path.slice(base.length - 1),
+  },
+};
+
 export default defineConfig({
-  base: process.env.SOL_BASE ?? '/',
+  base,
   plugins: [svelte(), offline()],
   define: { __SOL_VERSION__: JSON.stringify(commit ? `${version} · ${commit}` : version) },
   worker: { format: 'es' },
   build: { target: 'es2022' },
   // The module is built into the workspace's target/, outside this folder.
-  server: { fs: { allow: ['..'] } },
+  server: { fs: { allow: ['..'] }, proxy },
+  preview: { proxy },
 });

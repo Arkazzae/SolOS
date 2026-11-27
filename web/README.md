@@ -2,12 +2,13 @@
 
 The Sol console's own emulators on a web page, with the console's interface: Start, the Library and Settings,
 driven by a pad or the keyboard. Players add their own game files; games, saves and profiles stay in their
-browser, and nothing is uploaded anywhere. Once loaded, the page works offline and can be installed as an app.
+browser. Two-player NES rooms relay pad input and temporary emulator snapshots. Once loaded, the page works offline and can be installed as an app.
 
 Consoles: NES (`.nes`), Mega Drive (`.md`, `.gen`, `.smd`, `.bin`), Game Boy (`.gb`, `.sgb`), Game Boy Color
 (`.gbc`, `.cgb`), Game Boy Advance (`.gba`) and PICO-8 (`.p8`, `.p8.png`). No BIOS is needed.
 
-The page is static: plain files that any web server can serve. There is no server code and no account.
+Single-player runs from any static host. For online play, use Docker Compose or the Cloudflare demo Worker.
+Both run the same Rust room logic. Players join without accounts.
 
 ## Run it with Docker
 
@@ -19,6 +20,17 @@ docker compose up -d
 
 Then open <http://localhost:8080>. The image builds the emulators (Rust to WebAssembly) and the page (Vite),
 and serves them with [Caddy](https://caddyserver.com).
+
+### Play NES together
+
+Open the game's details in the library and choose **Play online**. Copy the invitation link or tell the
+other player the room code. They can open the link or choose **Join by code** on Start on the same
+installation. Both players need the same NES file and emulator build. Each presses **Ready to play**.
+Each browser's first gamepad or keyboard controls its assigned seat, P1 or P2.
+
+The host may start with their local progress. The session uses temporary saves for both players.
+Opening the game menu pauses the room. A brief network drop reconnects automatically while the tab
+remains open. Choosing **Exit** closes the room for both players.
 
 ### HTTPS
 
@@ -43,6 +55,28 @@ publish port 443:
 docker build -f web/Dockerfile --build-arg SOL_BASE=/sol/ -t sol-web .   # from the repository's root
 ```
 
+## Cloudflare demo
+
+The Worker in `web/cloud` serves the built page at the root of its domain. Each room gets its own
+Durable Object. The Worker has no account or cloud-save dependency. Build the root-path web assets
+and the Rust room module locally. From `web/`:
+
+```sh
+rustup target add wasm32-unknown-unknown
+cargo install --locked wasm-bindgen-cli --version 0.2.127
+pnpm install --frozen-lockfile
+pnpm core
+pnpm build
+cd cloud
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+Open <http://localhost:8787>. To check the bundle locally, run `pnpm exec wrangler deploy --dry-run`
+from `web/cloud/`. To publish this separate demo to your account, use `pnpm exec wrangler deploy`
+from the same directory. The supplied configuration provisions the room namespace and serves the assets
+together. [Durable Object WebSockets](https://developers.cloudflare.com/durable-objects/best-practices/websockets/)
+
 ## Host it anywhere else
 
 Build it once, then copy `dist/` to any static host (nginx, Apache, Netlify, Cloudflare Pages, GitHub Pages,
@@ -52,7 +86,7 @@ TypeScript that Node runs as it is) and pnpm:
 ```sh
 rustup target add wasm32-unknown-unknown
 pnpm install
-pnpm core     # the emulators, to ../target/wasm32-unknown-unknown/release/solweb.wasm
+pnpm core     # the emulator and netplay WASM modules
 pnpm build    # the page, to dist/ (SOL_BASE=/sol/ for a sub-path)
 ```
 
@@ -64,6 +98,11 @@ What the server should do:
 - Serve over HTTPS (see above).
 
 No special headers (COOP, COEP) are needed: the page does not use SharedArrayBuffer.
+
+For multiplayer on a separate static host, route the WebSocket at the app's base path (for example
+`/sol/netplay`) to `/netplay` on your room server. Build it from the workspace with
+`cargo build --release -p sol-rooms`. Its default listen address is `127.0.0.1:8788`, configurable
+with `SOL_ROOMS_LISTEN`. A static-only deployment still supports offline solo play.
 
 ## Updating
 
@@ -108,10 +147,12 @@ button is pressed. Pads in the order they were connected are players 1 to 4.
 ## Development
 
 ```sh
+cargo run -p sol-rooms  # for online play, in a separate terminal
 pnpm dev      # the page with live reload (build the emulators once first: pnpm core)
 pnpm types    # svelte-check and the tools' types
 pnpm test     # browser tests in a fresh headless profile (SOL_BROWSER names the browser's executable)
 pnpm check    # the WebAssembly build against the native one, frame by frame
+pnpm test:rooms  # two Chromium profiles against Compose, SOL_TEST_URL selects another deployment
 ```
 
 The design and the internals are in [docs/web.md](../docs/web.md).
